@@ -88,8 +88,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 # Rôle : avec JWT et refresh_token valides, invalide ce token et journalise ; sans JWT, redirige vers login.
-# Liens : route /api/v1/auth/logout/ ; {% url 'logout' %} de templates/base.html y mène aussi (nom dupliqué).
-# La branche session (django_logout) exige un user sans token, or stock_control/settings.py n'active que le JWT.
+# Liens : route /api/v1/auth/logout/ (api/v1/auth/urls.py) ; écrit un ActionLog (apps/accounts/models.py).
 @api_view(['POST', 'GET'])
 @permission_classes([AllowAny])
 def logout_view(request):

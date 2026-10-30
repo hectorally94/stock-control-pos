@@ -12,7 +12,7 @@ from apps.settings.models import StoreSetting
 
 # Rôle : à la création d'une vente terminée, met à jour les totaux et points ; à crédit, crée le CustomerCredit.
 # Liens : signal post_save de Sale (apps/pos/models.py) ; lit StoreSetting ; écrit Customer et CustomerCredit.
-# Vente passée de completed à cancelled ou refunded : inverse ces effets et solde le crédit restant.
+# Le bloc qui inverse ces effets en cas d'annulation n'est jamais atteint : le signal s'arrête si le statut n'est pas completed.
 @receiver(post_save, sender=Sale)
 def update_customer_on_sale(sender, instance, created, **kwargs):
     """

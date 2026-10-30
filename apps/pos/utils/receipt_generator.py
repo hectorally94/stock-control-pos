@@ -21,9 +21,9 @@ def format_currency(amount):
         return f"{amount} FB"
 
 
-# Rôle : construit le reçu PDF d'une vente avec ReportLab (A4 ou thermique 80 mm) et renvoie un BytesIO.
-# Liens : appelée par sale_receipt_pdf (apps/pos/views_frontend.py) et receipt (api/v1/views/pos.py) ;
-# lit nom, adresse et pied de reçu via StoreSetting.get_setting (apps/settings/models.py).
+# Rôle : construit le reçu PDF d'une vente avec ReportLab et renvoie un BytesIO ; page A4 ou large de 8 cm
+# (thermal), mais tableaux larges de 14 à 15 cm dans les deux cas, donc plus larges que la page de 8 cm.
+# Liens : sale_receipt_pdf (apps/pos/views_frontend.py), receipt (api/v1/views/pos.py) ; lit StoreSetting.
 def generate_receipt_pdf(sale, format='A4'):
     """
     Generate a PDF receipt for a sale.

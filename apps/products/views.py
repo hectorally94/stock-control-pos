@@ -17,7 +17,7 @@ from apps.locations.models import Location, LocationStock
 # Liens : appliqué aux vues d'ici ; même logique dans apps/accounting/views.py et apps/customers/views.py.
 def role_required(*roles):
     """Decorator to check if user has required role"""
-    # Rôle : reçoit la vue à protéger et renvoie wrapper ; contrairement aux autres copies, sans @wraps.
+    # Rôle : reçoit la vue à protéger et renvoie wrapper, sans @wraps, comme dans accounts et locations.
     # Liens : utilisé uniquement par role_required, dans ce fichier.
     def decorator(view_func):
         # Rôle : renvoie l'anonyme vers login et le mauvais rôle vers home avec un message, sinon exécute la vue.

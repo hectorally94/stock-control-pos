@@ -4,7 +4,7 @@ Application de gestion de stock et de point de vente (POS) pour boutiques, dép�
 
 *English version: [README.md](README.md)*
 
-**Documentation :** ce fichier explique l'installation. Pour comprendre le code, lisez [ARCHITECTURE.md](ARCHITECTURE.md).
+**Documentation :** ce fichier explique l'installation. Pour comprendre le code, lisez [ARCHITECTURE.md](ARCHITECTURE.md), puis le [guide des fonctionnalités](docs/guide/README.md).
 
 ## Fonctionnalités
 

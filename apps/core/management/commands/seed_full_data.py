@@ -61,7 +61,8 @@ class Command(BaseCommand):
 
         self.print_login_credentials(users)
 
-    # Rôle : supprime ventes, crédits, transferts, stock, dépenses, clients et catalogue, enfants d'abord.
+    # Rôle : supprime dans l'ordre lignes de vente, ventes, crédits, transferts, stock, dépenses, clients,
+    # catalogue ; les ventes partent avant les crédits, or un crédit lié à une vente bloque sa suppression.
     # Liens : appelée par Command.handle avec --clear ; conserve entreprises, emplacements et utilisateurs.
     def clear_data(self):
         """Clear existing data"""

@@ -1,6 +1,6 @@
 # Architecture du projet
 
-Ce document est la carte du projet : il explique comment le backend et le frontend sont organisés, et où aller pour modifier quelque chose. Pour installer le projet, voir [README.fr.md](README.fr.md).
+Ce document est la carte du projet : il explique comment le backend et le frontend sont organisés, et où aller pour modifier quelque chose. Pour installer le projet, voir [README.fr.md](README.fr.md). Pour le détail de chaque fonctionnalité, voir le [guide des fonctionnalités](docs/guide/README.md).
 
 ## Vue d'ensemble
 
@@ -46,7 +46,7 @@ docker-compose.yml  Base MySQL locale
 
 | Application | Rôle | Modèles |
 |---|---|---|
-| `core` | Entreprise, modèles de base, tableaux de bord, exports | `Enterprise`, `EnterpriseAwareModel`, `TimeStampedModel`, `AuditableModel` |
+| `core` | Entreprise, tableaux de bord, exports | `Enterprise`, et les modèles abstraits `EnterpriseAwareModel`, `TimeStampedModel`, `AuditableModel`, qu'aucun autre modèle n'utilise pour l'instant |
 | `accounts` | Utilisateurs, rôles, journal d'actions | `User`, `ActionLog` |
 | `products` | Catalogue | `Category`, `Product`, `ProductPackaging` |
 | `stock` | Niveaux de stock et mouvements | `Stock`, `StockMovement` |
@@ -104,7 +104,7 @@ Ne créez donc pas de `CustomerCredit` à la main pour une vente à crédit : vo
 ### Multi-entreprise et emplacements
 
 - La plupart des données sont liées à une `Enterprise` : chaque utilisateur ne doit voir que celles de son entreprise.
-- Certains rôles, comme le caissier et le gérant de boutique, sont aussi limités à leur emplacement (`user.location`).
+- Sur certaines pages, le caissier et le gérant de boutique ne voient que leur emplacement (`user.location`). Cela dépend de chaque vue : vérifiez-la.
 - Dans l'API, les classes de `apps/core/mixins.py` servent à appliquer ce filtrage.
 
 Pour toute nouvelle vue, filtrez explicitement par entreprise.
@@ -117,7 +117,7 @@ Pour toute nouvelle vue, filtrez explicitement par entreprise.
 | `manager`, `boutique_manager` | Gestion | `/dashboard/gerant/` |
 | `warehouse_manager`, `stock_manager` | Stock et transferts | Tableau de bord du stock |
 | `cashier` | Caisse et clients | `/dashboard/caisse/` |
-| `accountant` | Lecture et rapports | `/dashboard/comptable/` |
+| `accountant` | Consultation, rapports, et saisie des dépenses sur les pages web | `/dashboard/comptable/` |
 
 La redirection selon le rôle est dans `apps/core/dashboard_views.py`. Les permissions de l'API sont dans `api/v1/permissions.py`.
 
@@ -243,6 +243,7 @@ Les tests sont dans `tests/` et utilisent SQLite en mémoire (`stock_control/set
 ## Pour aller plus loin
 
 - [README.fr.md](README.fr.md) : installation
+- [docs/guide/README.md](docs/guide/README.md) : guide détaillé de chaque fonctionnalité
 - [database/stock_control_20261030.sql](database/stock_control_20261030.sql) : base de données à importer en local
 - [docs/database_schema.md](docs/database_schema.md) : schéma complet de la base de données
 - [docs/design_decisions.md](docs/design_decisions.md) : choix de conception

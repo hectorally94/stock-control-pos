@@ -521,7 +521,7 @@ def _stock_list_export(request, title, filename, items):
     )
 
 
-# Rôle : liste les lignes Stock sous le seuil du produit mais encore positives ; le filtre se fait en Python.
+# Rôle : liste les lignes Stock au seuil du produit ou sous lui, encore positives ; filtre fait en Python.
 # Liens : route /stock/low-stock/ ; lit Stock.is_low_stock ; lien de apps/core/dashboard_views.py ;
 # rend apps/stock/templates/stock/stock_list.html.
 @login_required

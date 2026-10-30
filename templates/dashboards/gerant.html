@@ -118,7 +118,7 @@
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } }
             },
-            // Rôle : au clic sur une barre, ouvre les ventes de ce jour ; slice retire « ?date=today » de link_sales.
+            // Rôle : au clic sur un point de la courbe, ouvre les ventes de ce jour.
             // Liens : appelé par Chart.js ; données de gerant_dashboard (apps/core/dashboard_views.py).
             onClick: (e, els) => { if (els.length) window.location = "{{ link_sales|slice:':-11' }}?date=" + iso[els[0].index]; }
         }
