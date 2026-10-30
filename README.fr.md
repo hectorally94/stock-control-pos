@@ -81,9 +81,9 @@ La ligne `stock_control_mysql` doit afficher `(healthy)`. Si elle affiche `(heal
 
 Choisissez **une seule** des deux options.
 
-#### Option A : importer la vraie base de données
+#### Option A : importer la base de données fournie (recommandé)
 
-Le fichier de la base de données n'est pas sur GitHub, car il contient des données réelles. Le responsable du projet vous l'envoie en privé. Il s'appelle `stock_control_20261030.sql`.
+Le fichier de la base de données est inclus dans le projet : `database/stock_control_20261030.sql`. Vous n'avez rien à télécharger de plus.
 
 **Attention :** l'import remplace tout le contenu de votre base locale. Ce n'est pas un problème lors de la première installation.
 
@@ -101,29 +101,21 @@ Si PowerShell vient d'être rouvert, réactivez l'environnement Python :
 .venv\Scripts\Activate.ps1
 ```
 
-**Étape 2 : créer le dossier `database`**
-
-```powershell
-mkdir database
-```
-
-**Étape 3 : placer le fichier dans ce dossier**
-
-Dans l'Explorateur Windows, copiez le fichier `stock_control_20261030.sql` (souvent dans **Téléchargements**) et collez-le dans le dossier `database` du projet. Vérifiez ensuite :
+**Étape 2 : vérifier que le fichier est présent**
 
 ```powershell
 dir database
 ```
 
-Vous devez voir `stock_control_20261030.sql`. Si le nom est différent (par exemple avec `(1)` à la fin), renommez le fichier.
+Vous devez voir `stock_control_20261030.sql`.
 
-**Étape 4 : copier le fichier dans le conteneur Docker**
+**Étape 3 : copier le fichier dans le conteneur Docker**
 
 ```powershell
 docker cp database\stock_control_20261030.sql stock_control_mysql:/tmp/backup.sql
 ```
 
-**Étape 5 : importer le fichier dans MySQL**
+**Étape 4 : importer le fichier dans MySQL**
 
 Copiez cette commande en entier, sur une seule ligne :
 
@@ -133,7 +125,7 @@ docker exec stock_control_mysql sh -c "mysql -uroot -pstockcontrol123 --default-
 
 Cela prend quelques secondes. Le message `Using a password on the command line interface can be insecure` est normal : ce n'est pas une erreur.
 
-**Étape 6 : vérifier l'import**
+**Étape 5 : vérifier l'import**
 
 ```powershell
 docker exec stock_control_mysql mysql -uroot -pstockcontrol123 -e "SELECT COUNT(*) AS produits FROM stock_control_pos.products;"
@@ -141,19 +133,21 @@ docker exec stock_control_mysql mysql -uroot -pstockcontrol123 -e "SELECT COUNT(
 
 Le résultat doit afficher **340**.
 
-**Étape 7 : terminer la préparation**
+**Étape 6 : terminer la préparation**
 
 ```powershell
 python manage.py migrate
 ```
 
-Le message `No migrations to apply` est normal. N'exécutez ni `seed_data` ni `createsuperuser` : les données et les comptes viennent déjà du fichier importé. Demandez les identifiants au responsable du projet.
+Le message `No migrations to apply` est normal. N'exécutez ni `seed_data` ni `createsuperuser` : les données et les comptes viennent déjà du fichier importé.
+
+Pour vous connecter, utilisez les boutons de connexion rapide de la page de connexion (par exemple « Patron »).
 
 Passez ensuite à la section **« 7. Lancer l'application »** ci-dessous.
 
 #### Option B : installer à partir de zéro, avec des données de démonstration
 
-Utilisez cette option si vous n'avez pas le fichier de la base de données.
+Utilisez cette option si vous préférez d'autres données de démonstration à la place du fichier fourni.
 
 ```powershell
 python manage.py migrate
@@ -210,11 +204,11 @@ pytest --ignore=tests/test_import_catalog.py
 | `mysqlclient` ne s'installe pas | Vérifiez avec `python --version` que vous utilisez Python 3.12 ou 3.13 |
 | `Can't connect to MySQL` (erreur 2003) | Docker n'est pas lancé ou MySQL démarre encore : `docker start stock_control_mysql`, attendez 30 secondes |
 | `No such container: stock_control_mysql` | La base n'est pas démarrée : relancez `docker compose up -d mysql` |
-| `The system cannot find the path specified` avec `docker cp` | Le fichier n'est pas dans `database` ou son nom est différent : vérifiez avec `dir database` |
+| `The system cannot find the path specified` avec `docker cp` | PowerShell n'est pas dans le dossier du projet : vérifiez avec `dir database` |
 | `Unknown database 'stock_control_pos'` | MySQL n'était pas encore prêt : attendez `(healthy)` dans `docker ps` et recommencez l'import |
 | Port 3306 déjà utilisé | MySQL est déjà installé sur la machine : arrêtez son service, ou changez le port dans `docker-compose.yml` et `.env` |
 
 ## Sécurité
 
-- Ne publiez jamais le fichier `.env` ni le fichier `.sql` de la base de données.
-- Si vous recevez le fichier `.sql`, gardez-le privé : il contient des données réelles.
+- Ne publiez jamais le fichier `.env`.
+- `database/stock_control_20261030.sql` est public et sert au développement local. N'ajoutez jamais de données confidentielles dans ce dossier.

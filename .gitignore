@@ -5,9 +5,8 @@
 USER_CREDENTIALS.md
 .claude/
 
-# Client data (price list, database exports)
+# Client data (price list, compressed database backups)
 apps/products/data/*.xlsx
-database/
 *.sql.gz
 
 # Python

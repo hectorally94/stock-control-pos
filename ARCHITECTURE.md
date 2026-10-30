@@ -35,6 +35,7 @@ api/v1/             L'API REST : views/, serializers/, permissions.py, auth/, ur
 templates/          Templates communs : base.html, login.html, home.html, dashboards/, partials/
 tests/              Tests pytest, factories.py et conftest.py
 docs/               Schéma de la base de données et guide fonctionnel
+database/           Copie de la base à importer en local (voir README.fr.md, section 6)
 manage.py           Commandes Django
 docker-compose.yml  Base MySQL locale
 ```
@@ -242,6 +243,7 @@ Les tests sont dans `tests/` et utilisent SQLite en mémoire (`stock_control/set
 ## Pour aller plus loin
 
 - [README.fr.md](README.fr.md) : installation
+- [database/stock_control_20261030.sql](database/stock_control_20261030.sql) : base de données à importer en local
 - [docs/database_schema.md](docs/database_schema.md) : schéma complet de la base de données
 - [docs/design_decisions.md](docs/design_decisions.md) : choix de conception
 - [API_QUICK_REFERENCE.md](API_QUICK_REFERENCE.md) : points d'accès de l'API
