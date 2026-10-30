@@ -2,6 +2,8 @@
 
 Complete Django backend for Stock Control & Point of Sale application with MySQL database.
 
+*Version française et guide d'installation : [README.fr.md](README.fr.md)*
+
 ## 🚀 Project Structure
 
 ```
