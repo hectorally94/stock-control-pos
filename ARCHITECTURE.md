@@ -177,7 +177,7 @@ Tailwind et Alpine.js sont chargés depuis Internet : sans connexion, les pages 
 |---|---|---|
 | `/login/` | Connexion | `templates/login.html` |
 | `/` | Redirection vers le tableau de bord du rôle | `apps/core/dashboard_views.py` |
-| `/dashboard/` | Tableaux de bord par rôle | `apps/core/` |
+| `/dashboard/patron/`, `gerant/`, `caisse/`, `comptable/` | Tableaux de bord par rôle | `apps/core/` |
 | `/pos/` | Caisse | `apps/pos/` |
 | `/pos/sales/` | Historique des ventes | `apps/pos/` |
 | `/products/` | Produits et catégories | `apps/products/` |
@@ -185,7 +185,7 @@ Tailwind et Alpine.js sont chargés depuis Internet : sans connexion, les pages 
 | `/locations/` | Dépôts et boutiques | `apps/locations/` |
 | `/transfers/` | Transferts | `apps/transfers/` |
 | `/customers/` | Clients et crédits | `apps/customers/` |
-| `/accounting/` | Dépenses et sessions de caisse | `apps/accounting/` |
+| `/accounting/expenses/`, `/accounting/cash-sessions/` | Dépenses et sessions de caisse | `apps/accounting/` |
 | `/reports/` | Rapports et exports | `apps/reports/` |
 | `/accounts/users/` | Utilisateurs | `apps/accounts/` |
 | `/guide/` | Guide fonctionnel | `docs/functional_documentation.html` |
