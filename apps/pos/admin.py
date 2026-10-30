@@ -1,3 +1,5 @@
+# Rôle : configure Sale et SaleItem dans l'administration Django, avec les lignes affichées dans chaque vente.
+# Liens : modèles de apps/pos/models.py ; pages servies sous admin/ (stock_control/urls.py).
 from django.contrib import admin
 from .models import Sale, SaleItem
 

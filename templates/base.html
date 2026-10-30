@@ -636,6 +636,8 @@
             localStorage.setItem(tourKey, 'true');
         });
 
+        // Si la visite guidée est annulée, la note comme vue pour ne plus la lancer automatiquement.
+        // Liens : clé tourKey dans localStorage, lue au chargement par le setTimeout de ce fichier.
         tour.on('cancel', function() {
             localStorage.setItem(tourKey, 'true');
         });

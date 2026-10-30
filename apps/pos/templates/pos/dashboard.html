@@ -402,6 +402,8 @@
 
 {% block extra_scripts %}
 <script>
+// Une fois la page chargée, règle les couleurs selon le thème et crée les graphiques du tableau de bord.
+// Liens : canvas trendChart, paymentChart, hourlyChart ; sales_dashboard (apps/pos/views_frontend.py).
 document.addEventListener('DOMContentLoaded', function() {
     // Check for dark mode
     const isDarkMode = document.documentElement.classList.contains('dark');
@@ -581,6 +583,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Rôle : rédige l'infobulle du graphique en FB, avec le pourcentage pour les modes de paiement.
                             // Liens : appelée par Chart.js (tooltip.callbacks) ; données fournies par sales_dashboard.
                             label: function(context) {
+                                // Additionne les valeurs du graphique pour calculer le pourcentage de la part survolée.
+                                // Liens : canvas paymentChart.
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
                                 return context.label + ': ' + context.parsed.toLocaleString() + ' FB (' + percentage + '%)';
@@ -665,6 +669,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle dark mode toggle
     const observer = new MutationObserver(function(mutations) {
+        // Quand la classe de la balise html change, recharge la page pour redessiner les graphiques au bon thème.
+        // Liens : le bouton de thème de templates/base.html modifie cette classe via darkMode.
         mutations.forEach(function(mutation) {
             if (mutation.attributeName === 'class') {
                 location.reload();

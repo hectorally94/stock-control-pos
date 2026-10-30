@@ -434,6 +434,8 @@
 
 {% block extra_scripts %}
 <script>
+// Une fois la page chargée, règle les couleurs selon le thème et crée les cinq graphiques des rapports.
+// Liens : canvas dailySalesChart, monthlyTrendsChart, categoryChart, paymentChart, hourlyChart (dashboard_view).
 document.addEventListener('DOMContentLoaded', function() {
     // Check for dark mode
     const isDarkMode = document.documentElement.classList.contains('dark');
@@ -674,6 +676,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
                             // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                             label: function(context) {
+                                // Additionne les valeurs du graphique pour calculer le pourcentage de la part survolée.
+                                // Liens : canvas categoryChart.
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
                                 return context.label + ': ' + context.parsed.toLocaleString() + ' FB (' + percentage + '%)';
@@ -744,6 +748,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
                             // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                             label: function(context) {
+                                // Additionne les valeurs du graphique pour calculer le pourcentage de la part survolée.
+                                // Liens : canvas paymentChart.
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
                                 return context.label + ': ' + context.parsed.toLocaleString() + ' FB (' + percentage + '%)';
@@ -828,6 +834,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle dark mode toggle
     const observer = new MutationObserver(function(mutations) {
+        // Quand la classe de la balise html change, recharge la page pour redessiner les graphiques au bon thème.
+        // Liens : le bouton de thème de templates/base.html modifie cette classe via darkMode.
         mutations.forEach(function(mutation) {
             if (mutation.attributeName === 'class') {
                 // Reload page to update charts with new theme

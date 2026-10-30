@@ -1,3 +1,6 @@
+# Rôle : table d'adresses principale : admin, connexion, guide, accueil, puis un préfixe par application.
+# Liens : désigné par ROOT_URLCONF (stock_control/settings.py) ; inclut les urls.py des apps et api/v1/urls.py.
+# Vues directes : apps/core/views.py (guide) et apps/core/dashboard_views.py (accueil).
 """
 URL configuration for stock_control project.
 """

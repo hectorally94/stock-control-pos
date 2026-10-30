@@ -1,3 +1,5 @@
+# Rôle : définit AccountingConfig, la configuration Django de l'application accounting.
+# Liens : chargée par Django grâce à apps.accounting dans INSTALLED_APPS (stock_control/settings.py).
 from django.apps import AppConfig
 
 

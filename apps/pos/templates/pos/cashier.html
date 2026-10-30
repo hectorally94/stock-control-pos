@@ -505,6 +505,7 @@ function posApp() {
         // Rôle : ajoute un produit au panier local ou augmente sa quantité, sans dépasser le stock s'il est non nul.
         // Liens : @click de cette page et de apps/pos/templates/pos/partials/product_grid.html ; aucun appel serveur.
         addToCart(id, name, price, stock) {
+            // Cherche si ce produit est déjà une ligne du panier.
             const existing = this.cart.find(item => item.id === id);
             if (existing) {
                 if (existing.quantity < stock || stock === 0) {
@@ -518,6 +519,8 @@ function posApp() {
             const btn = event.target.closest('button');
             if (btn) {
                 btn.classList.add('added-to-cart');
+                // Retire après 300 ms la classe qui anime le bouton cliqué.
+                // Liens : classe CSS added-to-cart définie en haut de ce template.
                 setTimeout(() => btn.classList.remove('added-to-cart'), 300);
             }
         },
@@ -687,6 +690,8 @@ function posApp() {
                 amount_paid: this.total,
                 change_amount: 0,
                 payment_method: this.payment_method,
+                // Convertit chaque ligne du panier au format JSON attendu par le serveur.
+                // Liens : lu dans la clé items par create_sale_view (apps/pos/views_frontend.py).
                 items: this.cart.map(item => ({
                     product_id: item.id,
                     quantity: item.quantity,
@@ -710,6 +715,8 @@ function posApp() {
                     // Show success toast
                     this.successMessage = `Vente ${result.sale_number} - ${this.total.toLocaleString()} FB`;
                     this.showSuccessToast = true;
+                    // Masque le message de succès après 4 secondes.
+                    // Liens : le bloc x-show="showSuccessToast" de ce template.
                     setTimeout(() => this.showSuccessToast = false, 4000);
 
                     // Clear cart first

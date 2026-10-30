@@ -868,7 +868,10 @@
 
   // Build the accordions inside every role's .funcs container.
   document.querySelectorAll('.funcs').forEach(box => {
+    // Découpe la liste de clés de data-fns, retire les espaces et supprime les valeurs vides.
+    // Liens : attribut data-fns des blocs .funcs de cette page.
     const keys = (box.dataset.fns || '').split(',').map(s => s.trim()).filter(Boolean);
+    // Pour chaque clé, construit un accordéon (bouton et panneau) à partir de la fiche correspondante de FUNCS.
     keys.forEach(k => {
       const f = FUNCS[k];
       if (!f) return;
@@ -890,10 +893,13 @@
       inner.className = 'inner';
       inner.innerHTML =
         (f.why ? '<p class="why"><b>À quoi ça sert :</b> ' + f.why + '</p>' : '') +
+        // Transforme chaque étape de la fiche en élément de liste HTML.
         '<ol>' + f.steps.map(s => '<li>' + s + '</li>').join('') + '</ol>' +
         (f.note ? '<p class="ftag">ℹ︎ ' + f.note + '</p>' : '');
       panel.appendChild(inner);
 
+      // Au clic, ouvre ou ferme l'accordéon et met à jour aria-expanded.
+      // Liens : la classe open affiche le panneau via le CSS .fitem.open de cette page.
       btn.addEventListener('click', () => {
         const open = item.classList.toggle('open');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -908,16 +914,24 @@
   // Scrollspy: highlight active TOC item
   const links = Array.from(document.querySelectorAll('.toc a'));
   const map = {};
+  // Associe l'id de chaque section visée par le sommaire à son lien.
+  // Liens : liens .toc a et sections de cette page.
   links.forEach(a => { const id = a.getAttribute('href').slice(1); const el = document.getElementById(id); if(el) map[id]=a; });
+  // Récupère l'élément de section correspondant à chaque id retenu.
   const sections = Object.keys(map).map(id => document.getElementById(id));
+  // Crée l'observateur appelé quand une section entre ou sort de la zone visible.
   const obs = new IntersectionObserver((entries)=>{
+    // Pour chaque section qui entre dans la zone observée, met en évidence son lien du sommaire.
     entries.forEach(e=>{
       if(e.isIntersecting){
+        // Retire la classe active de tous les liens du sommaire.
+        // Liens : style .toc a.active de cette page.
         links.forEach(l=>l.classList.remove('active'));
         const a = map[e.target.id]; if(a) a.classList.add('active');
       }
     });
   }, {rootMargin:'-10% 0px -80% 0px', threshold:0});
+  // Demande à l'observateur de surveiller chaque section.
   sections.forEach(s=>obs.observe(s));
 
   // Show "back to login" only when the guide is served by the app (not file://)
@@ -928,7 +942,11 @@
 
   // Back-to-top
   const totop = document.getElementById('totop');
+  // Au défilement, affiche le bouton de retour en haut au-delà de 500 pixels.
+  // Liens : bouton totop et style .totop.show de cette page.
   window.addEventListener('scroll', ()=>{ totop.classList.toggle('show', window.scrollY>500); });
+  // Au clic sur le bouton, remonte en haut de la page avec un défilement doux.
+  // Liens : bouton totop de cette page.
   totop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
 </script>
 </body>

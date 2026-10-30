@@ -1,3 +1,5 @@
+# Rôle : configure Stock et StockMovement dans l'administration Django.
+# Liens : modèles de apps/stock/models.py ; pages servies sous admin/ (stock_control/urls.py).
 from django.contrib import admin
 from .models import Stock, StockMovement
 

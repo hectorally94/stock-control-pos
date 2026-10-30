@@ -1,3 +1,5 @@
+# Rôle : adresses de connexion de l'API : login, refresh, logout, me et test du jeton JWT.
+# Liens : route vers api/v1/auth/views.py et TokenRefreshView ; inclus sous auth/ par api/v1/urls.py.
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (

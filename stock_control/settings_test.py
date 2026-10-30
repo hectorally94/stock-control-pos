@@ -1,3 +1,5 @@
+# Rôle : réglages des tests : reprend les réglages normaux, remplace la base (SQLite), le cache et le hachage.
+# Liens : importe stock_control/settings.py ; désigné par DJANGO_SETTINGS_MODULE dans pytest.ini.
 """
 Test settings: run the suite on SQLite in-memory so tests never need a MySQL
 server. Imports everything from the normal settings and overrides only the

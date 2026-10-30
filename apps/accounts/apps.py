@@ -1,3 +1,5 @@
+# Rôle : définit AccountsConfig, la configuration Django de l'application accounts.
+# Liens : chargée par Django grâce à apps.accounts dans INSTALLED_APPS (stock_control/settings.py).
 from django.apps import AppConfig
 
 

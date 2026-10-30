@@ -1,3 +1,5 @@
+# Rôle : configure Category, Product et ProductPackaging dans l'administration Django.
+# Liens : modèles de apps/products/models.py ; pages servies sous admin/ (stock_control/urls.py).
 from django.contrib import admin
 from .models import Category, Product, ProductPackaging
 

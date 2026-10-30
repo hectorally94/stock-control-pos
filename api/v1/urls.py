@@ -1,3 +1,6 @@
+# Rôle : routeur de l'API : enregistre chaque ViewSet et ajoute la documentation (schema, docs, redoc).
+# Liens : ViewSets réexportés par api/v1/views/__init__.py ; inclut api/v1/auth/urls.py.
+# Ce fichier est inclus sous api/v1/ par stock_control/urls.py.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView

@@ -1,3 +1,6 @@
+# Rôle : réexporte les serializers des comptes, produits, stock, clients, ventes, compta et réglages.
+# Liens : importé par accounts, products, stock, customers, pos, accounting et settings de api/v1/views/.
+# Les serializers core, locations et transfers sont importés directement depuis leur propre fichier.
 from .accounts import UserSerializer, UserListSerializer, ActionLogSerializer
 from .products import CategorySerializer, ProductSerializer, ProductListSerializer, ProductPackagingSerializer
 from .stock import StockSerializer, StockMovementSerializer

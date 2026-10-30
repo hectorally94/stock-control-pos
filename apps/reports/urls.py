@@ -1,3 +1,5 @@
+# Rôle : adresses du tableau de bord des rapports et des quatre exports Excel.
+# Liens : route vers apps/reports/views.py ; inclus sous reports/ par stock_control/urls.py.
 from django.urls import path
 from apps.reports import views
 

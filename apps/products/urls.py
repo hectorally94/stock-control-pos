@@ -1,3 +1,5 @@
+# Rôle : adresses des catégories et des produits : liste, création, modification, suppression, activation.
+# Liens : route vers apps/products/views.py ; inclus sous products/ par stock_control/urls.py.
 from django.urls import path
 from . import views
 

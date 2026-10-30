@@ -1,3 +1,5 @@
+# Rôle : regroupe et réexporte tous les ViewSets de l'API, un fichier par domaine.
+# Liens : importé par api/v1/urls.py, qui enregistre ces ViewSets dans son routeur.
 from .accounts import UserViewSet, ActionLogViewSet
 from .products import CategoryViewSet, ProductViewSet, ProductPackagingViewSet
 from .stock import StockViewSet, StockMovementViewSet

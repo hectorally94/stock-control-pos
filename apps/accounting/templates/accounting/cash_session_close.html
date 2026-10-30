@@ -102,12 +102,16 @@
 </div>
 
 <script>
+// Une fois la page chargée, récupère le solde d'ouverture et les éléments de l'aperçu, puis branche le calcul.
+// Liens : opening_balance vient de cash_session_close (apps/accounting/views.py).
 document.addEventListener('DOMContentLoaded', function() {
     const openingBalance = {{ session.opening_balance }};
     const closingInput = document.getElementById('closing_balance');
     const preview = document.getElementById('preview');
     const diffPreview = document.getElementById('difference-preview');
 
+    // À chaque saisie, affiche l'écart entre le solde compté et le solde d'ouverture, coloré selon son signe.
+    // Liens : champ closing_balance, blocs preview et difference-preview de ce template.
     closingInput.addEventListener('input', function() {
         const closing = parseFloat(this.value) || 0;
         const diff = closing - openingBalance;

@@ -1,3 +1,5 @@
+# Rôle : définit CoreConfig, la configuration Django de l'application core.
+# Liens : chargée par Django grâce à apps.core dans INSTALLED_APPS (stock_control/settings.py).
 from django.apps import AppConfig
 
 

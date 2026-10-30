@@ -1,3 +1,5 @@
+# Rôle : adresses des quatre tableaux de bord par rôle : patron, gérant, caisse et comptable.
+# Liens : route vers apps/core/dashboard_views.py ; inclus sous dashboard/ par stock_control/urls.py.
 """Role-specific dashboard routes."""
 from django.urls import path
 

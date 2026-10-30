@@ -1,3 +1,5 @@
+# Rôle : définit EnterpriseSerializer (détail) et EnterpriseListSerializer (liste), qui convertissent en JSON.
+# Liens : utilisé par api/v1/views/core.py ; modèle Enterprise de apps/core/models.py.
 from rest_framework import serializers
 from apps.core.models import Enterprise
 

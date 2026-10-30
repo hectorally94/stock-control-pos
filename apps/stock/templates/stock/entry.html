@@ -190,6 +190,7 @@
                 init() {
                     // Pre-select the product passed via ?product=<pk> (fills name + cost).
                     if (preselectedId) {
+                        // Cherche le produit dont l'id correspond à celui transmis ; les deux sont comparés en texte.
                         const p = this.products.find(x => String(x.id) === String(preselectedId));
                         if (p) this.select(p);
                     }
@@ -221,6 +222,7 @@
                 // Rôle : annule la sélection dès que le texte saisi ne correspond plus au produit choisi.
                 // Liens : appelée par @input du champ de recherche ; sans selectedId, le bouton d'envoi reste désactivé.
                 syncSelection() {
+                    // Retrouve le produit actuellement sélectionné à partir de selectedId.
                     const chosen = this.products.find(p => p.id === this.selectedId);
                     if (!chosen || chosen.label !== this.search) this.selectedId = '';
                 },

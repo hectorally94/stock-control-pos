@@ -1,3 +1,6 @@
+# Rôle : réglages Django communs : apps, middlewares, base MySQL, templates, API REST, JWT, CORS et langue.
+# Liens : chargé par manage.py, stock_control/wsgi.py, stock_control/asgi.py et stock_control/settings_test.py.
+# Désigne stock_control/urls.py et le User de apps/accounts/models.py ; lit les valeurs du fichier .env.
 """
 Django settings for stock_control project.
 

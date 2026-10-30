@@ -1,3 +1,5 @@
+# Rôle : adresses des clients, de leurs crédits et de leurs paiements.
+# Liens : route vers apps/customers/views.py ; inclus sous customers/ par stock_control/urls.py.
 from django.urls import path
 from . import views
 

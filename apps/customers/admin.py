@@ -1,3 +1,5 @@
+# Rôle : configure Customer, CustomerCredit et CreditPayment dans l'administration Django.
+# Liens : modèles de apps/customers/models.py ; pages servies sous admin/ (stock_control/urls.py).
 from django.contrib import admin
 from .models import Customer, CustomerCredit, CreditPayment
 

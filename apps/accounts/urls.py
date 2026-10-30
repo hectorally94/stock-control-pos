@@ -1,3 +1,5 @@
+# Rôle : adresses de gestion des utilisateurs : liste, création, détail, modification, activation.
+# Liens : route vers apps/accounts/views.py ; inclus sous accounts/ par stock_control/urls.py.
 from django.urls import path
 from . import views
 

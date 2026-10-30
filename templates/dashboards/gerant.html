@@ -92,6 +92,8 @@
 
 {% block extra_scripts %}
 <script>
+// Fonction exécutée immédiatement : dessine la courbe des ventes avec un dégradé, selon le thème.
+// Liens : canvas salesChart, s-labels, s-data, s-iso ; gerant_dashboard (apps/core/dashboard_views.py).
 (function () {
     const dark = document.documentElement.classList.contains('dark');
     const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
@@ -111,6 +113,8 @@
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
+                // Formate les graduations de l'axe des montants à la française.
+                // Liens : canvas salesChart.
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } }
             },

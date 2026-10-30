@@ -1,3 +1,5 @@
+# Rôle : adresses de la caisse : page caisse, tableau de bord, ventes, recherche, créations et reçu PDF.
+# Liens : route vers apps/pos/views_frontend.py ; inclus sous pos/ par stock_control/urls.py.
 from django.urls import path
 from apps.pos import views_frontend
 

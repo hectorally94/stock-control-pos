@@ -1,3 +1,5 @@
+# Rôle : définit SettingsConfig, la configuration Django de l'application settings.
+# Liens : chargée par Django grâce à apps.settings dans INSTALLED_APPS (stock_control/settings.py).
 from django.apps import AppConfig
 
 

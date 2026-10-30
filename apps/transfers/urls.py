@@ -1,3 +1,5 @@
+# Rôle : adresses des transferts : liste, création, détail, envoi, réception et annulation.
+# Liens : route vers apps/transfers/views.py ; inclus sous transfers/ par stock_control/urls.py.
 from django.urls import path
 from . import views
 

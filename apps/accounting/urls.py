@@ -1,3 +1,5 @@
+# Rôle : adresses des catégories de dépenses, des dépenses et des sessions de caisse.
+# Liens : route vers apps/accounting/views.py ; inclus sous accounting/ par stock_control/urls.py.
 from django.urls import path
 from . import views
 

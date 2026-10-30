@@ -108,6 +108,8 @@
 
 {% block extra_scripts %}
 <script>
+// Fonction exécutée immédiatement : dessine le graphique en barres du chiffre d'affaires, selon le thème.
+// Liens : canvas caChart, ca-labels, ca-data, ca-periods ; patron_dashboard (apps/core/dashboard_views.py).
 (function () {
     const dark = document.documentElement.classList.contains('dark');
     const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
@@ -123,8 +125,12 @@
         data: { labels, datasets: [{ label: 'CA (FB)', data, backgroundColor: '#3b82f6', hoverBackgroundColor: '#2563eb', borderRadius: 6, maxBarThickness: 46 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
+            // Ajoute à l'infobulle une ligne indiquant que la barre est cliquable.
+            // Liens : canvas caChart.
             plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: () => 'Cliquer pour voir les ventes' } } },
             scales: {
+                // Formate les graduations de l'axe des montants à la française.
+                // Liens : canvas caChart.
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick } }
             },

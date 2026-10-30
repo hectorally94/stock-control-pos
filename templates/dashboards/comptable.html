@@ -113,6 +113,8 @@
 
 {% block extra_scripts %}
 <script>
+// Fonction exécutée immédiatement : dessine les graphiques revenus/dépenses et dépenses par catégorie.
+// Liens : canvas revExpChart et catChart ; données de comptable_dashboard (apps/core/dashboard_views.py).
 (function () {
     const dark = document.documentElement.classList.contains('dark');
     const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
@@ -137,6 +139,8 @@
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { position: 'bottom', labels: { color: tick, boxWidth: 12, usePointStyle: true } } },
             scales: {
+                // Formate les graduations de l'axe des montants à la française.
+                // Liens : canvas revExpChart.
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick } }
             },
@@ -164,6 +168,8 @@
             data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: palette, borderWidth: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false } } }
         });
+        // Donne à chaque pastille de la légende la couleur de sa catégorie dans le graphique.
+        // Liens : éléments .cat-dot et leur attribut data-i dans ce template.
         document.querySelectorAll('.cat-dot').forEach(el => {
             el.style.backgroundColor = palette[(+el.dataset.i) % palette.length];
         });

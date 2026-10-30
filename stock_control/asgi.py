@@ -1,3 +1,5 @@
+# Rôle : crée l'objet application, point d'entrée ASGI du projet pour un serveur asynchrone.
+# Liens : charge stock_control/settings.py ; aucun autre fichier du dépôt ne l'importe.
 """
 ASGI config for stock_control project.
 

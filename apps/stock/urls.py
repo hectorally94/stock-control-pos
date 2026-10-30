@@ -1,3 +1,5 @@
+# Rôle : adresses du stock : tableau de bord, entrée, en stock, stock faible, rupture et mouvements.
+# Liens : route vers apps/stock/views_frontend.py ; inclus sous stock/ par stock_control/urls.py.
 from django.urls import path
 from apps.stock import views_frontend
 

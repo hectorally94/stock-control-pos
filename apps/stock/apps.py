@@ -1,3 +1,5 @@
+# Rôle : définit StockConfig, la configuration Django de l'application stock.
+# Liens : chargée par Django grâce à apps.stock dans INSTALLED_APPS (stock_control/settings.py).
 from django.apps import AppConfig
 
 

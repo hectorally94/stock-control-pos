@@ -207,6 +207,8 @@ function transferForm() {
         // Liens : appelée automatiquement par Alpine.js ; le produit vient de preselected_product (transfer_create).
         init() {
             {% if preselected_product %}
+            // Cherche le produit présélectionné dans la liste ; les deux id sont comparés en texte.
+            // Liens : preselected_product est fourni par transfer_create (apps/transfers/views.py).
             const p = this.products.find(x => String(x.id) === '{{ preselected_product.pk }}');
             if (p) { this.items[0].product = p.id; this.items[0].search = p.label; }
             {% endif %}
@@ -231,6 +233,7 @@ function transferForm() {
         // Rôle : retourne le stock à la source du produit choisi dans une ligne.
         // Liens : utilisée par le max du champ quantité, l'affichage « Disponible », qtyValid() et updateProducts().
         stockFor(item) {
+            // Retrouve le produit choisi dans la ligne ; les deux id sont comparés en texte.
             const p = this.products.find(x => String(x.id) === String(item.product));
             return p ? this.stockAt(p) : 0;
         },
@@ -238,6 +241,7 @@ function transferForm() {
         // Rôle : retourne les produits en stock à la source, filtrés par le texte saisi dans la ligne.
         // Liens : appelée par le x-for de la liste déroulante et son message vide ; utilise stockAt().
         availableProducts(item) {
+            // Garde seulement les produits dont le stock est positif à l'emplacement source.
             let list = this.products.filter(p => this.stockAt(p) > 0);
             const q = (item.search || '').trim().toLowerCase();
             if (q) list = list.filter(p => p.label.toLowerCase().includes(q));
@@ -270,6 +274,7 @@ function transferForm() {
                    this.destinationLocation &&
                    this.sourceLocation !== this.destinationLocation &&
                    this.items.length > 0 &&
+                   // Vérifie que chaque ligne d'article est valide, en appelant qtyValid().
                    this.items.every(item => this.qtyValid(item));
         },
         // Rôle : quand la source change, retire des lignes les produits sans stock à ce nouvel emplacement.

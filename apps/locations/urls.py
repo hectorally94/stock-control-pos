@@ -1,3 +1,5 @@
+# Rôle : adresses des emplacements, de leurs types et de leur stock.
+# Liens : route vers apps/locations/views.py ; inclus sous locations/ par stock_control/urls.py.
 from django.urls import path
 from . import views
 

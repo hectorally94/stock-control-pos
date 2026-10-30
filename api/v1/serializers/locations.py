@@ -1,3 +1,5 @@
+# Rôle : définit les serializers JSON de Location (détail et liste) et de LocationStock.
+# Liens : utilisé par api/v1/views/locations.py ; modèles de apps/locations/models.py.
 from rest_framework import serializers
 from apps.locations.models import Location, LocationStock
 
