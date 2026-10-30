@@ -4,6 +4,8 @@ Application de gestion de stock et de point de vente (POS) pour boutiques, dép�
 
 *English version: [README.md](README.md)*
 
+**Documentation :** ce fichier explique l'installation. Pour comprendre le code, lisez [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Fonctionnalités
 
 - **Point de vente :** ventes, paiements (espèces, mobile, carte, crédit)
@@ -149,13 +151,23 @@ Le message `No migrations to apply` est normal. N'exécutez ni `seed_data` ni `c
 
 Passez ensuite à la section **« 7. Lancer l'application »** ci-dessous.
 
-#### Option B : commencer avec une base vide
+#### Option B : installer à partir de zéro, avec des données de démonstration
+
+Utilisez cette option si vous n'avez pas le fichier de la base de données.
 
 ```powershell
 python manage.py migrate
+python manage.py createcachetable
 python manage.py seed_data
-python manage.py createsuperuser
+python manage.py seed_full_data
 ```
+
+`seed_full_data` crée une entreprise de démonstration (produits, stock, ventes, utilisateurs) et peut prendre quelques minutes. À la fin, il affiche la liste des comptes. Connectez-vous par exemple avec `patron` / `patron123`.
+
+**Important :**
+
+- N'utilisez pas `createsuperuser` pour commencer : ce compte n'a ni rôle ni entreprise, et l'application vous ramènerait toujours à la page d'accueil.
+- Les boutons de connexion rapide de la page de connexion ne fonctionnent pas avec cette option. Saisissez les identifiants à la main.
 
 ### 7. Lancer l'application
 

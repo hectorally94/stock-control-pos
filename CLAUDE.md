@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Django 6.0 Stock Control & POS system with REST API (DRF) + Django templates frontend (TailwindCSS + AlpineJS). MySQL in production, SQLite in-memory for tests.
+Django 5.0 Stock Control & POS system with REST API (DRF) + Django templates frontend (TailwindCSS + AlpineJS). MySQL in production, SQLite in-memory for tests.
 
 ## Common Commands
 
