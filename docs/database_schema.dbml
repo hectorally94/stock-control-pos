@@ -1,0 +1,374 @@
+// Stock Control & POS - Database Schema (DBML)
+// Import this into https://dbdiagram.io/d
+// Docs: https://dbml.dbdiagram.io/docs
+
+// ============================================================================
+// 1. Authentication & Users
+// ============================================================================
+
+Table users {
+  id bigint [primary key, increment]
+  email varchar(255) [unique, not null]
+  username varchar(150) [unique, not null]
+  password varchar(255) [not null]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  phone varchar(20)
+  role varchar(50) [not null, note: 'admin, manager, stock_manager, cashier, accountant']
+  is_active boolean [default: true]
+  last_login datetime
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    role
+    email
+  }
+}
+
+Table action_logs {
+  id bigint [primary key, increment]
+  user_id bigint [not null, ref: > users.id]
+  action_type varchar(50) [not null]
+  entity_type varchar(50) [not null]
+  entity_id bigint
+  description text
+  old_value text [note: 'JSON format']
+  new_value text [note: 'JSON format']
+  ip_address varchar(45)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    user_id
+    (entity_type, entity_id)
+    created_at
+    action_type
+  }
+}
+
+// ============================================================================
+// 2. Products & Categories
+// ============================================================================
+
+Table categories {
+  id bigint [primary key, increment]
+  name varchar(100) [unique, not null]
+  description text
+  is_active boolean [default: true]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    name
+  }
+}
+
+Table products {
+  id bigint [primary key, increment]
+  category_id bigint [not null, ref: > categories.id]
+  name varchar(200) [not null]
+  description text
+  barcode varchar(50) [unique]
+  sku varchar(50) [unique]
+  unit varchar(20) [not null, note: 'piece, sachet, carton, kg, liter']
+  purchase_price decimal(12,2) [not null]
+  sale_price decimal(12,2) [not null]
+  tax_rate decimal(5,2) [default: 0.00]
+  min_stock_threshold int [default: 0]
+  is_popular boolean [default: false]
+  is_active boolean [default: true]
+  image varchar(255)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    category_id
+    barcode
+    name
+  }
+  
+  Note: 'SKU is already unique, no additional index needed'
+}
+
+Table product_packagings {
+  id bigint [primary key, increment]
+  product_id bigint [not null, ref: > products.id]
+  name varchar(50) [not null]
+  quantity_per_unit decimal(12,3) [not null]
+  barcode varchar(50) [unique]
+  sale_price decimal(12,2)
+  is_active boolean [default: true]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    product_id
+    barcode
+  }
+}
+
+// ============================================================================
+// 3. Stock Management
+// ============================================================================
+
+Table stock {
+  id bigint [primary key, increment]
+  product_id bigint [unique, not null, ref: - products.id]
+  quantity decimal(12,3) [not null, default: 0]
+  last_restock_date date
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    product_id
+  }
+}
+
+Table stock_movements {
+  id bigint [primary key, increment]
+  product_id bigint [not null, ref: > products.id]
+  user_id bigint [not null, ref: > users.id]
+  movement_type varchar(20) [not null, note: 'entry, exit']
+  reason varchar(50) [not null, note: 'purchase, sale, manual_sale, loss, etc.']
+  quantity decimal(12,3) [not null]
+  unit_cost decimal(12,2)
+  reference varchar(100)
+  notes text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    product_id
+    created_at
+    movement_type
+    user_id
+    reason
+  }
+}
+
+// ============================================================================
+// 4. Customers
+// ============================================================================
+
+Table customers {
+  id bigint [primary key, increment]
+  name varchar(200) [not null]
+  phone varchar(20)
+  email varchar(255)
+  address text
+  notes text
+  credit_limit decimal(12,2) [default: 0.00]
+  current_balance decimal(12,2) [default: 0.00]
+  total_purchases decimal(12,2) [default: 0.00]
+  purchase_count int [default: 0]
+  loyalty_points int [default: 0]
+  is_active boolean [default: true]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    name
+    phone
+    current_balance
+    total_purchases
+  }
+}
+
+// ============================================================================
+// 5. Sales & POS
+// ============================================================================
+
+Table sales {
+  id bigint [primary key, increment]
+  sale_number varchar(50) [unique, not null]
+  customer_id bigint [ref: > customers.id]
+  user_id bigint [not null, ref: > users.id]
+  subtotal decimal(12,2) [not null]
+  discount_amount decimal(12,2) [default: 0.00]
+  discount_percent decimal(5,2) [default: 0.00]
+  tax_amount decimal(12,2) [default: 0.00]
+  total_amount decimal(12,2) [not null]
+  amount_paid decimal(12,2) [not null]
+  change_amount decimal(12,2) [default: 0.00]
+  payment_method varchar(20) [not null, note: 'cash, mobile_money, card, credit']
+  payment_reference varchar(100)
+  status varchar(20) [default: 'completed', note: 'completed, refunded, cancelled']
+  notes text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    customer_id
+    user_id
+    created_at
+    sale_number
+    status
+    payment_method
+  }
+}
+
+Table sale_items {
+  id bigint [primary key, increment]
+  sale_id bigint [not null, ref: > sales.id]
+  product_id bigint [not null, ref: > products.id]
+  product_name varchar(200) [not null]
+  quantity decimal(12,3) [not null]
+  unit_price decimal(12,2) [not null]
+  purchase_price decimal(12,2) [not null]
+  discount_amount decimal(12,2) [default: 0.00]
+  tax_rate decimal(5,2) [default: 0.00]
+  tax_amount decimal(12,2) [default: 0.00]
+  total_price decimal(12,2) [not null]
+  
+  indexes {
+    sale_id
+    product_id
+  }
+}
+
+// ============================================================================
+// 6. Customer Credits
+// ============================================================================
+
+Table customer_credits {
+  id bigint [primary key, increment]
+  customer_id bigint [not null, ref: > customers.id]
+  sale_id bigint [not null, ref: - sales.id]
+  original_amount decimal(12,2) [not null]
+  remaining_amount decimal(12,2) [not null]
+  due_date date
+  status varchar(20) [default: 'pending', note: 'pending, partial, paid']
+  notes text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    customer_id
+    status
+    sale_id
+    due_date
+  }
+}
+
+Table credit_payments {
+  id bigint [primary key, increment]
+  credit_id bigint [not null, ref: > customer_credits.id]
+  user_id bigint [not null, ref: > users.id]
+  amount decimal(12,2) [not null]
+  payment_method varchar(20) [not null, note: 'cash, mobile_money, card']
+  payment_reference varchar(100)
+  notes text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    credit_id
+    created_at
+    user_id
+  }
+}
+
+// ============================================================================
+// 7. Accounting & Expenses
+// ============================================================================
+
+Table expense_categories {
+  id bigint [primary key, increment]
+  name varchar(100) [unique, not null]
+  description text
+  is_active boolean [default: true]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    name
+  }
+}
+
+Table expenses {
+  id bigint [primary key, increment]
+  expense_category_id bigint [ref: > expense_categories.id]
+  user_id bigint [not null, ref: > users.id]
+  amount decimal(12,2) [not null]
+  description text [not null]
+  expense_date date [not null]
+  payment_method varchar(20) [not null, note: 'cash, mobile_money, card, bank_transfer']
+  reference varchar(100)
+  supplier varchar(200)
+  is_recurring boolean [default: false]
+  notes text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    expense_category_id
+    expense_date
+    user_id
+  }
+}
+
+Table cash_register_sessions {
+  id bigint [primary key, increment]
+  user_id bigint [not null, ref: > users.id]
+  opening_balance decimal(12,2) [not null]
+  closing_balance decimal(12,2)
+  expected_balance decimal(12,2)
+  difference decimal(12,2)
+  opened_at datetime [not null]
+  closed_at datetime
+  status varchar(20) [default: 'open', note: 'open, closed']
+  notes text
+  
+  indexes {
+    user_id
+    opened_at
+    status
+  }
+}
+
+Table daily_summaries {
+  id bigint [primary key, increment]
+  summary_date date [unique, not null]
+  total_sales decimal(12,2) [default: 0.00, note: 'Aggregated from sales table']
+  total_expenses decimal(12,2) [default: 0.00, note: 'Aggregated from expenses table']
+  total_cash decimal(12,2) [default: 0.00, note: 'From sales where payment_method=cash']
+  total_mobile_money decimal(12,2) [default: 0.00, note: 'From sales where payment_method=mobile_money']
+  total_card decimal(12,2) [default: 0.00, note: 'From sales where payment_method=card']
+  total_credit decimal(12,2) [default: 0.00, note: 'From sales where payment_method=credit']
+  credit_collected decimal(12,2) [default: 0.00, note: 'Aggregated from credit_payments table']
+  total_cost_of_goods decimal(12,2) [default: 0.00, note: 'Aggregated from sale_items.purchase_price']
+  gross_profit decimal(12,2) [default: 0.00, note: 'total_sales - total_cost_of_goods']
+  number_of_sales int [default: 0, note: 'Count of sales records']
+  number_of_customers int [default: 0, note: 'Count of distinct customers']
+  net_profit decimal(12,2) [default: 0.00, note: 'gross_profit - total_expenses']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    summary_date
+  }
+  
+  Note: '''
+  Auto-generated summary table. Data sources:
+  - sales → total_sales, payment method breakdowns, number_of_sales
+  - expenses → total_expenses
+  - credit_payments → credit_collected
+  - sale_items → total_cost_of_goods (for profit calculations)
+  - customers → number_of_customers (distinct count)
+  '''
+}
+
+// ============================================================================
+// 8. Store Configuration
+// ============================================================================
+
+Table store_settings {
+  id bigint [primary key, increment]
+  key varchar(100) [unique, not null]
+  value text
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    key
+  }
+  
+  Note: '''
+  Global configuration key-value store (no FK relationships).
+  Contains: store_name, currency, tax_rate, receipt_footer, etc.
+  Accessed by application layer for business logic.
+  '''
+}

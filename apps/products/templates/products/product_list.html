@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Catalogue des Produits{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-box text-blue-500 mr-2"></i>Catalogue des Produits
+            </h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">
+                Gerez votre inventaire de produits
+            </p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                <i class="fas fa-check-circle mr-2"></i>{{ active_products }}/{{ total_products }} actifs
+            </span>
+            {% include "partials/export_buttons.html" %}
+            {% if user.role in 'admin,owner,manager' %}
+            <a href="{% url 'products:category_list' %}" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition font-medium">
+                <i class="fas fa-tags mr-2"></i>Categories
+            </a>
+            <a href="{% url 'products:product_create' %}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium">
+                <i class="fas fa-plus mr-2"></i>Nouveau Produit
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
+        <form method="get" x-data="{ loading: false }" class="flex flex-wrap items-end gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rechercher</label>
+                <div class="relative">
+                    <input type="text" name="search" value="{{ search }}" placeholder="Nom, code-barres, SKU..." autocomplete="off"
+                           @input.debounce.450ms="loading = true; $el.form.requestSubmit()"
+                           x-init="if ($el.value) { $el.focus(); $el.setSelectionRange($el.value.length, $el.value.length); }"
+                           class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" x-show="!loading"></i>
+                    <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" x-show="loading" x-cloak></i>
+                </div>
+            </div>
+            <div class="w-48">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categorie</label>
+                <select name="category" @change="loading = true; $el.form.requestSubmit()" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                    <option value="">Toutes</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.pk }}" {% if selected_category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="w-40">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
+                <select name="status" @change="loading = true; $el.form.requestSubmit()" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                    <option value="">Tous</option>
+                    <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Actifs</option>
+                    <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactifs</option>
+                    <option value="popular" {% if selected_status == 'popular' %}selected{% endif %}>Populaires</option>
+                </select>
+            </div>
+            {% if locations %}
+            <div class="w-48">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Emplacement</label>
+                <select name="location" @change="loading = true; $el.form.requestSubmit()" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                    <option value="">Tous</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.pk }}" {% if selected_location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="flex items-center space-x-2">
+                <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                    <i class="fas fa-filter mr-2"></i>Filtrer
+                </button>
+                {% if search or selected_category or selected_status or selected_stock or selected_location %}
+                <a href="{% url 'products:product_list' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-lg transition">
+                    <i class="fas fa-times mr-2"></i>Reset
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Products Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categorie</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prix Achat</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prix Vente</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unite</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacements</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Statut</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for product in products %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition {% if not product.is_active %}opacity-60{% endif %}">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                    <i class="fas fa-box text-blue-500"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-medium text-gray-800 dark:text-white truncate">
+                                        {{ product.name }}
+                                        {% if product.is_popular %}
+                                        <i class="fas fa-star text-yellow-400 ml-1" title="Produit populaire"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {% if product.barcode %}
+                                        <span class="mr-2"><i class="fas fa-barcode mr-1"></i>{{ product.barcode }}</span>
+                                        {% endif %}
+                                        {% if product.sku %}
+                                        <span><i class="fas fa-hashtag mr-1"></i>{{ product.sku }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                                <i class="fas fa-folder mr-1"></i>{{ product.category.name }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="text-gray-600 dark:text-gray-300 font-mono">{{ product.purchase_price|floatformat:0 }} FB</span>
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="text-gray-800 dark:text-white font-semibold font-mono">{{ product.sale_price|floatformat:0 }} FB</span>
+                            {% if product.profit_margin > 0 %}
+                            <div class="text-xs text-green-500">+{{ product.profit_margin|floatformat:0 }}%</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <span class="text-sm text-gray-600 dark:text-gray-300">{{ product.get_unit_display }}</span>
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if product.active_location_stocks %}
+                            <div class="flex flex-wrap gap-1">
+                                {% for ls in product.active_location_stocks %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
+                                      title="{{ ls.location.name }} : {{ ls.quantity|floatformat:'-3' }}">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>{{ ls.location.name }}
+                                    <span class="ml-1 font-mono opacity-80">({{ ls.quantity|floatformat:'-3' }})</span>
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span class="text-xs text-gray-400 dark:text-gray-500 italic">
+                                <i class="fas fa-minus-circle mr-1"></i>Aucun emplacement
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% if product.is_active %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                <i class="fas fa-check-circle mr-1"></i>Actif
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                                <i class="fas fa-times-circle mr-1"></i>Inactif
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <a href="{% url 'products:product_detail' product.pk %}"
+                                   class="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition"
+                                   title="Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if user.role in 'admin,owner,manager' %}
+                                <a href="{% url 'products:product_edit' product.pk %}"
+                                   class="p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition"
+                                   title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="{% url 'products:product_toggle' product.pk %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="p-2 {% if product.is_active %}bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400{% else %}bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400{% endif %} rounded-lg hover:opacity-75 transition"
+                                            title="{% if product.is_active %}Desactiver{% else %}Activer{% endif %}">
+                                        <i class="fas {% if product.is_active %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-5 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-box-open text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+                                <p class="text-gray-500 dark:text-gray-400 text-lg">Aucun produit trouve</p>
+                                {% if user.role in 'admin,owner,manager' %}
+                                <a href="{% url 'products:product_create' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition">
+                                    <i class="fas fa-plus mr-2"></i>Ajouter un produit
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if products.has_other_pages %}
+        <div class="px-5 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Page {{ products.number }} sur {{ products.paginator.num_pages }}
+                </p>
+                <div class="flex items-center space-x-2">
+                    {% if products.has_previous %}
+                    <a href="?page={{ products.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_location %}&location={{ selected_location }}{% endif %}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% endif %}
+
+                    {% for num in products.paginator.page_range %}
+                        {% if products.number == num %}
+                        <span class="px-3 py-2 bg-blue-500 text-white rounded-lg">{{ num }}</span>
+                        {% elif num > products.number|add:'-3' and num < products.number|add:'3' %}
+                        <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_location %}&location={{ selected_location }}{% endif %}"
+                           class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                            {{ num }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if products.has_next %}
+                    <a href="?page={{ products.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_location %}&location={{ selected_location }}{% endif %}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

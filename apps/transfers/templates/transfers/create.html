@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau Transfert{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'transfers:list' %}" class="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                    <i class="fas fa-plus-circle text-green-500 mr-3"></i>
+                    Nouveau Transfert
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400">Créer un nouveau transfert de stock</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" id="transferForm" x-data="transferForm()">
+        {% csrf_token %}
+
+        <!-- Locations Selection -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-route text-blue-500 mr-2"></i>Emplacements
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Source -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-arrow-up-from-bracket text-orange-500 mr-1"></i>Source
+                    </label>
+                    <select name="source_location" required x-model="sourceLocation" @change="updateProducts()"
+                            class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                        <option value="">Sélectionner l'emplacement source</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.pk }}" {% if preselected_source.pk == loc.pk %}selected{% endif %}>
+                            {% if loc.location_type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name }} ({{ loc.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Destination -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-arrow-down-to-bracket text-green-500 mr-1"></i>Destination
+                    </label>
+                    <select name="destination_location" required x-model="destinationLocation"
+                            class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                        <option value="">Sélectionner la destination</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.pk }}">
+                            {% if loc.location_type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name }} ({{ loc.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Validation Message -->
+            <div x-show="sourceLocation && destinationLocation && sourceLocation === destinationLocation"
+                 class="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                La source et la destination doivent être différentes.
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-boxes-stacked text-purple-500 mr-2"></i>Articles à Transférer
+                </h2>
+                <button type="button" @click="addItem()"
+                        class="inline-flex items-center px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm transition">
+                    <i class="fas fa-plus mr-1"></i>Ajouter
+                </button>
+            </div>
+
+            <!-- Hint: pick the source first -->
+            <div x-show="!sourceLocation" x-cloak class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
+                <i class="fas fa-info-circle mr-2"></i>Sélectionnez d'abord l'emplacement source pour voir les produits disponibles.
+            </div>
+
+            <!-- Items List -->
+            <div class="space-y-3">
+                <template x-for="(item, index) in items" :key="index">
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div class="flex flex-wrap items-start gap-3">
+                            <!-- Searchable product combobox -->
+                            <div class="flex-1 min-w-[220px] relative">
+                                <input type="hidden" name="product_id" :value="item.product">
+                                <div class="relative">
+                                    <input type="text" x-model="item.search" autocomplete="off"
+                                           @focus="item.open = true" @click="item.open = true"
+                                           @input="item.open = true; if (item.search === '') item.product = ''"
+                                           @keydown.escape="item.open = false"
+                                           :placeholder="sourceLocation ? 'Rechercher un produit...' : 'Choisissez d\'abord la source'"
+                                           :disabled="!sourceLocation"
+                                           :class="item.product ? 'border-green-500' : 'border-gray-300 dark:border-gray-600'"
+                                           class="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-700 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-white disabled:opacity-60">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    <button type="button" x-show="item.search" x-cloak @click="clearProduct(item)"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
+                                </div>
+                                <!-- Dropdown: products in stock at the source, with available qty -->
+                                <div x-show="item.open && sourceLocation" x-cloak @click.outside="item.open = false"
+                                     class="absolute z-30 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
+                                    <template x-for="p in availableProducts(item)" :key="p.id">
+                                        <button type="button" @click="selectProduct(item, p)"
+                                                class="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 transition flex items-center justify-between gap-2 text-gray-800 dark:text-white">
+                                            <span x-text="p.label"></span>
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                                                  x-text="fmt(stockAt(p)) + ' ' + (p.unit || '')"></span>
+                                        </button>
+                                    </template>
+                                    <div x-show="availableProducts(item).length === 0" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                        <i class="fas fa-box-open mr-1"></i>Aucun produit en stock à cet emplacement
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Quantity, capped at available stock -->
+                            <div class="w-36">
+                                <input type="number" name="quantity" x-model="item.quantity" step="0.001" min="0.001"
+                                       :max="item.product ? stockFor(item) : null" required
+                                       placeholder="Quantité"
+                                       :class="item.quantity && !qtyValid(item) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 dark:border-gray-600'"
+                                       class="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded-lg focus:ring-2 focus:ring-blue-500 text-center text-gray-800 dark:text-white">
+                                <p class="mt-1 text-xs text-center" x-show="item.product" x-cloak
+                                   :class="item.quantity && parseFloat(item.quantity) > stockFor(item) ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400'">
+                                    Disponible: <span x-text="fmt(stockFor(item))"></span>
+                                </p>
+                            </div>
+                            <button type="button" @click="removeItem(index)"
+                                    class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition"
+                                    x-show="items.length > 1">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div x-show="item.quantity && parseFloat(item.quantity) > stockFor(item)" x-cloak
+                             class="mt-2 text-xs text-red-600 dark:text-red-400">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>La quantité dépasse le stock disponible à la source.
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="items.length === 0" class="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                <i class="fas fa-box-open text-gray-300 dark:text-gray-600 text-4xl mb-3"></i>
+                <p class="text-gray-500 dark:text-gray-400">Aucun article ajouté</p>
+                <button type="button" @click="addItem()"
+                        class="mt-3 inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                    <i class="fas fa-plus mr-2"></i>Ajouter un article
+                </button>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-sticky-note text-yellow-500 mr-2"></i>Notes (Optionnel)
+            </h2>
+            <textarea name="notes" rows="3"
+                      class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-white"
+                      placeholder="Ajoutez des notes pour ce transfert..."></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row justify-end gap-3">
+            <a href="{% url 'transfers:list' %}"
+               class="inline-flex items-center justify-center px-6 py-3 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition font-medium">
+                <i class="fas fa-times mr-2"></i>Annuler
+            </a>
+            <button type="submit"
+                    class="inline-flex items-center justify-center px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium"
+                    :disabled="!isValid()"
+                    :class="{ 'opacity-50 cursor-not-allowed': !isValid() }">
+                <i class="fas fa-check mr-2"></i>Créer le Transfert
+            </button>
+        </div>
+    </form>
+</div>
+
+{{ products_json|json_script:"products-data" }}
+<script>
+function transferForm() {
+    return {
+        sourceLocation: '{% if preselected_source %}{{ preselected_source.pk }}{% endif %}',
+        destinationLocation: '',
+        products: JSON.parse(document.getElementById('products-data').textContent),
+        items: [
+            { product: '', search: '', open: false, quantity: '' }
+        ],
+        init() {
+            {% if preselected_product %}
+            const p = this.products.find(x => String(x.id) === '{{ preselected_product.pk }}');
+            if (p) { this.items[0].product = p.id; this.items[0].search = p.label; }
+            {% endif %}
+        },
+        addItem() {
+            this.items.push({ product: '', search: '', open: false, quantity: '' });
+        },
+        removeItem(index) {
+            this.items.splice(index, 1);
+        },
+        // Stock available for product p at the selected source
+        stockAt(p) {
+            return (p.stock && p.stock[this.sourceLocation]) || 0;
+        },
+        // Stock available for the product selected in an item row
+        stockFor(item) {
+            const p = this.products.find(x => String(x.id) === String(item.product));
+            return p ? this.stockAt(p) : 0;
+        },
+        // Products in stock at the source, filtered by the row's search text
+        availableProducts(item) {
+            let list = this.products.filter(p => this.stockAt(p) > 0);
+            const q = (item.search || '').trim().toLowerCase();
+            if (q) list = list.filter(p => p.label.toLowerCase().includes(q));
+            return list;
+        },
+        selectProduct(item, p) {
+            item.product = p.id;
+            item.search = p.label;
+            item.open = false;
+        },
+        clearProduct(item) {
+            item.product = '';
+            item.search = '';
+            item.open = true;
+        },
+        qtyValid(item) {
+            const qty = parseFloat(item.quantity);
+            return item.product && qty > 0 && qty <= this.stockFor(item);
+        },
+        isValid() {
+            return this.sourceLocation &&
+                   this.destinationLocation &&
+                   this.sourceLocation !== this.destinationLocation &&
+                   this.items.length > 0 &&
+                   this.items.every(item => this.qtyValid(item));
+        },
+        updateProducts() {
+            // Source changed: drop selected products that have no stock there
+            this.items.forEach(item => {
+                if (item.product && this.stockFor(item) <= 0) {
+                    item.product = '';
+                    item.search = '';
+                }
+            });
+        },
+        fmt(n) {
+            return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+        }
+    }
+}
+</script>
+{% endblock %}

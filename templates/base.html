@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="fr" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true', sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true', sidebarOpen: false }" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stock Control & POS{% endblock %}</title>
+
+    <!-- Tailwind CSS CDN with dark mode -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Shepherd.js Tour Library -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/css/shepherd.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/js/shepherd.min.js"></script>
+
+    {% block extra_head %}{% endblock %}
+
+    <style>
+        [x-cloak] { display: none !important; }
+        * { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        .dark ::-webkit-scrollbar-track { background: #374151; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+        .dark ::-webkit-scrollbar-thumb { background: #6b7280; }
+
+        /* Mobile menu animation */
+        .mobile-menu-enter { animation: slideDown 0.2s ease-out; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ---------- Grouped sidebar ---------- */
+        .sidebar { width: 16rem; flex-shrink: 0; transition: width .18s ease, transform .2s ease; }
+        .sidebar .nav-scroll::-webkit-scrollbar { width: 6px; }
+        .sidebar .nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+        .nav-link.active-link { background: rgba(255,255,255,.18); font-weight: 600; }
+        .nav-link.active-link::before {
+            content: ""; position: absolute; left: 0; top: 20%; bottom: 20%;
+            width: 3px; border-radius: 0 3px 3px 0; background: #fff;
+        }
+        @media (min-width: 1024px) {
+            .sidebar { position: sticky; top: 0; height: 100vh; }
+            .sidebar.side-collapsed { width: 4.75rem; }
+            .sidebar.side-collapsed .nav-label,
+            .sidebar.side-collapsed .nav-grp-label,
+            .sidebar.side-collapsed .side-wide { display: none !important; }
+            .sidebar.side-collapsed .nav-link { justify-content: center; }
+            .sidebar.side-collapsed .nav-badge { display: none; }
+            .sidebar.side-collapsed .nav-link.active-link::before { display: none; }
+        }
+        @media (max-width: 1023px) {
+            .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; transform: translateX(-100%); box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+            .sidebar.side-open { transform: translateX(0); }
+        }
+
+        /* Shepherd Tour Styles */
+        .shepherd-element {
+            max-width: 400px;
+            z-index: 10000;
+        }
+        .shepherd-content {
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .shepherd-header {
+            background: linear-gradient(to right, #3b82f6, #2563eb);
+            border-radius: 12px 12px 0 0;
+            padding: 16px 20px;
+        }
+        .shepherd-title {
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .shepherd-cancel-icon {
+            color: white;
+            opacity: 0.8;
+        }
+        .shepherd-cancel-icon:hover {
+            opacity: 1;
+        }
+        .shepherd-text {
+            padding: 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #374151;
+        }
+        .dark .shepherd-text {
+            color: #e5e7eb;
+            background: #1f2937;
+        }
+        .dark .shepherd-content {
+            background: #1f2937;
+            border: 1px solid #374151;
+        }
+        .dark .shepherd-header {
+            background: linear-gradient(to right, #1e40af, #1d4ed8);
+        }
+        .shepherd-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .dark .shepherd-footer {
+            border-top-color: #374151;
+        }
+        .shepherd-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .shepherd-button-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .shepherd-button-primary:hover {
+            background: #2563eb;
+        }
+        .shepherd-button-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .shepherd-button-secondary:hover {
+            background: #e5e7eb;
+        }
+        .dark .shepherd-button-secondary {
+            background: #374151;
+            color: #e5e7eb;
+        }
+        .dark .shepherd-button-secondary:hover {
+            background: #4b5563;
+        }
+        .shepherd-modal-overlay-container {
+            z-index: 9999;
+        }
+        .shepherd-element[data-popper-placement^='bottom'] .shepherd-arrow::before,
+        .shepherd-element[data-popper-placement^='top'] .shepherd-arrow::before,
+        .shepherd-element[data-popper-placement^='left'] .shepherd-arrow::before,
+        .shepherd-element[data-popper-placement^='right'] .shepherd-arrow::before {
+            background: white;
+        }
+        .dark .shepherd-element[data-popper-placement^='bottom'] .shepherd-arrow::before,
+        .dark .shepherd-element[data-popper-placement^='top'] .shepherd-arrow::before,
+        .dark .shepherd-element[data-popper-placement^='left'] .shepherd-arrow::before,
+        .dark .shepherd-element[data-popper-placement^='right'] .shepherd-arrow::before {
+            background: #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="min-h-screen {% if user.is_authenticated %}lg:flex{% endif %}">
+    {% if user.is_authenticated %}
+        <!-- Mobile backdrop -->
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+             class="fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
+
+        <!-- ===================== SIDEBAR ===================== -->
+        <aside class="sidebar bg-gradient-to-b from-primary-600 to-primary-700 dark:from-gray-800 dark:to-gray-900 text-white flex flex-col"
+               :class="{ 'side-collapsed': sidebarCollapsed, 'side-open': sidebarOpen }">
+
+            <!-- Brand -->
+            <div class="flex items-center gap-2 px-4 h-16 border-b border-white/10 flex-shrink-0">
+                <a href="/" class="flex items-center gap-2 font-bold hover:opacity-90 transition min-w-0">
+                    <i class="fas fa-store text-2xl flex-shrink-0"></i>
+                    <span class="side-wide text-lg truncate">Stock Control</span>
+                </a>
+                <button @click="sidebarOpen = false" class="lg:hidden ml-auto p-2 rounded-lg hover:bg-white/10" aria-label="Fermer le menu">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="nav-scroll flex-1 overflow-y-auto px-3 py-3">
+            {% with vn=request.resolver_match.view_name %}
+
+                {# ===== Tableau de bord ===== #}
+                {% if user.role in 'admin,owner,manager,boutique_manager,cashier,accountant' %}
+                <div class="nav-grp-label px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Tableau de bord</div>
+                {% endif %}
+                {% if user.role in 'admin,owner' %}
+                <a href="{% url 'dashboards:patron' %}" title="Patron" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'dashboards:patron' %}active-link{% endif %}">
+                    <i class="fas fa-chart-pie w-5 text-center flex-shrink-0"></i><span class="nav-label">Patron</span></a>
+                {% endif %}
+                {% if user.role in 'manager,boutique_manager' %}
+                <a href="{% url 'dashboards:gerant' %}" title="Gérant" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'dashboards:gerant' %}active-link{% endif %}">
+                    <i class="fas fa-clipboard-list w-5 text-center flex-shrink-0"></i><span class="nav-label">Gérant</span></a>
+                {% endif %}
+                {% if user.role == 'cashier' %}
+                <a href="{% url 'dashboards:caisse' %}" title="Caisse" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'dashboards:caisse' %}active-link{% endif %}">
+                    <i class="fas fa-cash-register w-5 text-center flex-shrink-0"></i><span class="nav-label">Caisse</span></a>
+                {% endif %}
+                {% if user.role == 'accountant' %}
+                <a href="{% url 'dashboards:comptable' %}" title="Comptabilité" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'dashboards:comptable' %}active-link{% endif %}">
+                    <i class="fas fa-book w-5 text-center flex-shrink-0"></i><span class="nav-label">Comptabilité</span></a>
+                {% endif %}
+
+                {# ===== Stock ===== #}
+                {% if user.role in 'admin,owner,manager,warehouse_manager,boutique_manager,stock_manager' %}
+                <div class="nav-grp-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Stock</div>
+                <a href="{% url 'stock:dashboard' %}" title="Stock" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'stock:dashboard' %}active-link{% endif %}">
+                    <i class="fas fa-boxes-stacked w-5 text-center flex-shrink-0"></i><span class="nav-label">Stock</span></a>
+                {% endif %}
+                {% if user.role in 'admin,owner,manager' %}
+                <a href="{% url 'products:product_list' %}" title="Produits" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'products:product_list' %}active-link{% endif %}">
+                    <i class="fas fa-box w-5 text-center flex-shrink-0"></i><span class="nav-label">Produits</span></a>
+                {% endif %}
+                {% if user.role in 'admin,owner,manager,warehouse_manager,boutique_manager' %}
+                <a href="{% url 'locations:dashboard' %}" title="Emplacements" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'locations:dashboard' %}active-link{% endif %}">
+                    <i class="fas fa-location-dot w-5 text-center flex-shrink-0"></i><span class="nav-label">Emplacements</span></a>
+                <a href="{% url 'transfers:list' %}" title="Transferts" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'transfers:list' %}active-link{% endif %}">
+                    <i class="fas fa-truck-fast w-5 text-center flex-shrink-0"></i><span class="nav-label">Transferts</span></a>
+                {% endif %}
+
+                {# ===== Caisse ===== #}
+                {% if user.role in 'admin,owner,manager,boutique_manager,cashier,accountant' %}
+                <div class="nav-grp-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Caisse</div>
+                {% endif %}
+                {% if user.role in 'boutique_manager,cashier' %}
+                <a href="{% url 'pos:cashier' %}" title="Point de vente — Enregistrer les ventes" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'pos:cashier' %}active-link{% endif %}">
+                    <i class="fas fa-cash-register w-5 text-center flex-shrink-0"></i><span class="nav-label">Point de vente</span></a>
+                <a href="{% url 'pos:dashboard' %}" title="Mes ventes" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'pos:dashboard' %}active-link{% endif %}">
+                    <i class="fas fa-chart-bar w-5 text-center flex-shrink-0"></i><span class="nav-label">Mes ventes</span></a>
+                {% endif %}
+                {% if user.role in 'admin,owner,manager,boutique_manager,cashier,accountant' %}
+                <a href="{% url 'accounting:cash_session_list' %}" id="nav-cash" title="Sessions de caisse" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'accounting:cash_session_list' %}active-link{% endif %}">
+                    <i class="fas fa-vault w-5 text-center flex-shrink-0"></i><span class="nav-label">Sessions Caisse</span></a>
+                <a href="{% url 'customers:customer_list' %}" id="nav-customers" title="Clients" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'customers:customer_list' %}active-link{% endif %}">
+                    <i class="fas fa-user-group w-5 text-center flex-shrink-0"></i><span class="nav-label">Clients</span></a>
+                <a href="{% url 'customers:credit_list' %}" id="nav-credits" title="Crédits clients" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'customers:credit_list' %}active-link{% endif %}">
+                    <i class="fas fa-hand-holding-usd w-5 text-center flex-shrink-0"></i><span class="nav-label">Crédits</span></a>
+                {% endif %}
+
+                {# ===== Rapports ===== #}
+                {% if user.role in 'admin,owner,manager,accountant' %}
+                <div class="nav-grp-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Rapports</div>
+                <a href="{% url 'reports:dashboard' %}" title="Rapports" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'reports:dashboard' %}active-link{% endif %}">
+                    <i class="fas fa-chart-line w-5 text-center flex-shrink-0"></i><span class="nav-label">Rapports</span></a>
+                {% endif %}
+
+                {# ===== Dépenses ===== #}
+                {% if user.role in 'admin,owner,manager,boutique_manager,accountant' %}
+                <div class="nav-grp-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Dépenses</div>
+                <a href="{% url 'accounting:expense_list' %}" id="nav-expenses" title="Dépenses" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'accounting:expense_list' %}active-link{% endif %}">
+                    <i class="fas fa-receipt w-5 text-center flex-shrink-0"></i><span class="nav-label">Dépenses</span></a>
+                {% endif %}
+
+                {# ===== Utilisateurs ===== #}
+                {% if user.role in 'admin,owner,manager' %}
+                <div class="nav-grp-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Utilisateurs</div>
+                <a href="{% url 'accounts:user_list' %}" title="Utilisateurs" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm {% if vn == 'accounts:user_list' %}active-link{% endif %}">
+                    <i class="fas fa-users w-5 text-center flex-shrink-0"></i><span class="nav-label">Utilisateurs</span></a>
+                {% endif %}
+
+                {# ===== Configuration ===== #}
+                <div class="nav-grp-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/50">Configuration</div>
+                {% if user.role in 'admin,owner' %}
+                <a href="/admin/" title="Admin Django" class="nav-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm">
+                    <i class="fas fa-cog w-5 text-center flex-shrink-0"></i><span class="nav-label">Admin Django</span></a>
+                {% endif %}
+                <button type="button" @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)"
+                        title="Thème clair / sombre"
+                        class="nav-link relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm">
+                    <i class="fas w-5 text-center flex-shrink-0" :class="darkMode ? 'fa-sun text-yellow-300' : 'fa-moon'"></i>
+                    <span class="nav-label" x-text="darkMode ? 'Thème clair' : 'Thème sombre'">Thème sombre</span>
+                </button>
+
+            {% endwith %}
+            </nav>
+
+            <!-- Collapse toggle (desktop) -->
+            <div class="hidden lg:block border-t border-white/10 p-2 flex-shrink-0">
+                <button @click="sidebarCollapsed = !sidebarCollapsed; localStorage.setItem('sidebarCollapsed', sidebarCollapsed)"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-sm"
+                        :title="sidebarCollapsed ? 'Agrandir le menu' : 'Réduire le menu'">
+                    <i class="fas w-5 text-center flex-shrink-0" :class="sidebarCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
+                    <span class="nav-label">Réduire le menu</span>
+                </button>
+            </div>
+        </aside>
+    {% endif %}
+
+        <!-- ===================== MAIN COLUMN ===================== -->
+        <div class="flex flex-col flex-1 min-w-0 min-h-screen">
+        {% if user.is_authenticated %}
+            <!-- Topbar -->
+            <header class="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 px-3 sm:px-4 h-16 flex-shrink-0">
+                <button @click="sidebarOpen = true" class="lg:hidden p-2.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition" aria-label="Ouvrir le menu">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <a href="/" class="lg:hidden flex items-center gap-2 font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-store text-primary-600 dark:text-primary-400"></i>
+                    <span class="text-sm">Stock Control</span>
+                </a>
+
+                <div class="flex-1"></div>
+
+                <!-- Help/Tour Button -->
+                <button onclick="startTour()" id="tour-help-btn"
+                        class="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                        title="Aide & Visite guidée">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+
+                <!-- Theme Toggle -->
+                <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)"
+                        id="theme-toggle-btn"
+                        class="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                        :title="darkMode ? 'Mode Clair' : 'Mode Sombre'">
+                    <i x-show="!darkMode" class="fas fa-moon"></i>
+                    <i x-show="darkMode" class="fas fa-sun text-yellow-400"></i>
+                </button>
+
+                <!-- User chip -->
+                <div class="hidden sm:flex items-center gap-2 pl-2 pr-1 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+                    <div class="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {{ user.get_full_name|default:user.username|slice:":1"|upper }}
+                    </div>
+                    <div class="min-w-0 pr-1 hidden md:block">
+                        <div class="text-sm font-semibold text-gray-800 dark:text-white truncate max-w-[140px] leading-tight">{{ user.get_full_name|default:user.username }}</div>
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">{{ user.get_role_display }}</div>
+                    </div>
+                </div>
+
+                <!-- Logout -->
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="flex items-center gap-2 px-3 py-2 bg-red-500/90 hover:bg-red-600 text-white rounded-lg transition text-sm font-medium" title="Déconnexion">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="hidden lg:inline">Quitter</span>
+                    </button>
+                </form>
+            </header>
+        {% endif %}
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 mt-3 sm:mt-4">
+        {% for message in messages %}
+        <div class="flex items-center p-3 sm:p-4 mb-3 rounded-lg shadow-sm text-sm sm:text-base
+            {% if message.tags == 'error' %}bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800
+            {% elif message.tags == 'success' %}bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800
+            {% elif message.tags == 'warning' %}bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800
+            {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800{% endif %}" role="alert">
+            <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} mr-3 flex-shrink-0"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="flex-grow {% block main_class %}max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 w-full{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    {% if user.is_authenticated %}
+    <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
+            <div class="flex flex-col sm:flex-row justify-between items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 space-y-1 sm:space-y-0">
+                <span>Stock Control & POS v2.0</span>
+                <span class="text-center">{% if user.enterprise %}{{ user.enterprise.name }} - {% endif %}2025</span>
+            </div>
+        </div>
+    </footer>
+    {% endif %}
+        </div><!-- /main column -->
+    </div><!-- /layout wrapper -->
+
+    {% block extra_scripts %}{% endblock %}
+
+    <!-- Guided Tour Script -->
+    {% if user.is_authenticated %}
+    <script>
+    // Tour Configuration
+    const userRole = '{{ user.role }}';
+    const userName = '{{ user.get_full_name|default:user.username }}';
+    const tourKey = 'tour_completed_{{ user.id }}';
+
+    // Create the tour
+    function createTour() {
+        const tour = new Shepherd.Tour({
+            useModalOverlay: true,
+            defaultStepOptions: {
+                cancelIcon: { enabled: true },
+                scrollTo: { behavior: 'smooth', block: 'center' },
+                classes: 'shepherd-theme-custom',
+            }
+        });
+
+        // Welcome Step
+        tour.addStep({
+            id: 'welcome',
+            title: '<i class="fas fa-hand-wave mr-2"></i>Bienvenue!',
+            text: `
+                <div class="text-center py-2">
+                    <p class="text-lg font-medium mb-2">Bonjour ${userName}!</p>
+                    <p class="mb-3">Bienvenue dans <strong>Stock Control & POS</strong>, votre système de gestion de stock et point de vente.</p>
+                    <p class="text-sm text-gray-500">Cette visite guidée vous aidera à découvrir les fonctionnalités disponibles selon votre rôle.</p>
+                </div>
+            `,
+            buttons: [
+                { text: 'Passer', action: tour.cancel, classes: 'shepherd-button-secondary' },
+                { text: 'Commencer <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+
+        // Navigation Step
+        tour.addStep({
+            id: 'navigation',
+            title: '<i class="fas fa-compass mr-2"></i>Navigation',
+            text: `
+                <p class="mb-2">La barre de navigation vous permet d'accéder rapidement à toutes les sections de l'application.</p>
+                <p class="text-sm text-gray-500">Sur mobile, utilisez le menu hamburger pour voir toutes les options.</p>
+            `,
+            attachTo: { element: 'aside.sidebar nav', on: 'right' },
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+
+        // Theme Toggle
+        tour.addStep({
+            id: 'theme',
+            title: '<i class="fas fa-moon mr-2"></i>Mode Sombre',
+            text: `
+                <p>Cliquez ici pour basculer entre le mode clair et le mode sombre.</p>
+                <p class="text-sm text-gray-500 mt-2">Votre préférence sera sauvegardée automatiquement.</p>
+            `,
+            attachTo: { element: '#theme-toggle-btn', on: 'bottom' },
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+
+        // Help Button
+        tour.addStep({
+            id: 'help',
+            title: '<i class="fas fa-question-circle mr-2"></i>Aide',
+            text: `
+                <p>À tout moment, cliquez sur ce bouton pour relancer la visite guidée.</p>
+                <p class="text-sm text-gray-500 mt-2">Vous pouvez revenir ici chaque fois que vous avez besoin d'aide!</p>
+            `,
+            attachTo: { element: '#tour-help-btn', on: 'bottom' },
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+
+        // Role-specific steps
+        {% if user.role in 'cashier,boutique_manager' %}
+        // POS Steps for Cashiers
+        tour.addStep({
+            id: 'pos-intro',
+            title: '<i class="fas fa-cash-register mr-2"></i>Point de Vente (POS)',
+            text: `
+                <p class="mb-2"><strong>Votre espace de travail principal!</strong></p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>Caisse:</strong> Enregistrez les ventes rapidement</li>
+                    <li><strong>Mes Ventes:</strong> Consultez vos performances</li>
+                    <li>Recherchez les produits par nom ou code-barres</li>
+                    <li>Ajoutez des clients pour le suivi</li>
+                </ul>
+            `,
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+        {% endif %}
+
+        {% if user.role in 'admin,owner,manager,warehouse_manager,boutique_manager,stock_manager' %}
+        // Stock Steps
+        tour.addStep({
+            id: 'stock-intro',
+            title: '<i class="fas fa-boxes-stacked mr-2"></i>Gestion de Stock',
+            text: `
+                <p class="mb-2"><strong>Gérez votre inventaire efficacement!</strong></p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>Dashboard Stock:</strong> Vue d'ensemble des stocks</li>
+                    <li><strong>Entrées:</strong> Enregistrez les réceptions</li>
+                    <li><strong>Alertes:</strong> Suivez les stocks faibles</li>
+                    <li><strong>Mouvements:</strong> Historique complet</li>
+                </ul>
+            `,
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+        {% endif %}
+
+        {% if user.role in 'admin,owner,manager,warehouse_manager,boutique_manager' %}
+        // Transfers Steps
+        tour.addStep({
+            id: 'transfers-intro',
+            title: '<i class="fas fa-truck-fast mr-2"></i>Transferts',
+            text: `
+                <p class="mb-2"><strong>Transférez du stock entre emplacements!</strong></p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Créez des transferts entre dépôts et boutiques</li>
+                    <li>Suivez l'état: En attente → Envoyé → Reçu</li>
+                    <li>Historique complet des transferts</li>
+                </ul>
+            `,
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+        {% endif %}
+
+        {% if user.role in 'admin,owner,manager,accountant' %}
+        // Reports Steps
+        tour.addStep({
+            id: 'reports-intro',
+            title: '<i class="fas fa-chart-line mr-2"></i>Rapports & Analyses',
+            text: `
+                <p class="mb-2"><strong>Analysez vos performances!</strong></p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Rapports de ventes par période</li>
+                    <li>Analyse des marges et profits</li>
+                    <li>Exportation Excel des données</li>
+                    <li>Graphiques et tendances</li>
+                </ul>
+            `,
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+        {% endif %}
+
+        {% if user.role in 'admin,owner,manager,boutique_manager,cashier,accountant' %}
+        // Customers Steps
+        tour.addStep({
+            id: 'customers-intro',
+            title: '<i class="fas fa-user-group mr-2"></i>Gestion des Clients',
+            text: `
+                <p class="mb-2"><strong>Fidélisez vos clients!</strong></p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Créez et gérez les fiches clients</li>
+                    <li>Accordez des crédits avec limites</li>
+                    <li>Suivez les paiements et soldes</li>
+                    <li>Historique des achats par client</li>
+                </ul>
+            `,
+            attachTo: { element: '#nav-customers', on: 'bottom' },
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+        {% endif %}
+
+        {% if user.role in 'admin,owner,manager' %}
+        // Admin Steps
+        tour.addStep({
+            id: 'admin-intro',
+            title: '<i class="fas fa-users mr-2"></i>Administration',
+            text: `
+                <p class="mb-2"><strong>Gérez votre entreprise!</strong></p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>Utilisateurs:</strong> Créez et gérez les comptes</li>
+                    <li><strong>Produits:</strong> Catalogue et catégories</li>
+                    <li><strong>Emplacements:</strong> Dépôts et boutiques</li>
+                    <li><strong>Admin Django:</strong> Configuration avancée</li>
+                </ul>
+            `,
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: 'Suivant <i class="fas fa-arrow-right ml-1"></i>', action: tour.next, classes: 'shepherd-button-primary' }
+            ]
+        });
+        {% endif %}
+
+        // Final Step
+        tour.addStep({
+            id: 'complete',
+            title: '<i class="fas fa-check-circle mr-2"></i>C\'est parti!',
+            text: `
+                <div class="text-center py-2">
+                    <p class="text-lg font-medium mb-2">Vous êtes prêt!</p>
+                    <p class="mb-3">Vous connaissez maintenant les principales fonctionnalités de l'application.</p>
+                    <p class="text-sm text-gray-500">N'oubliez pas: cliquez sur <i class="fas fa-question-circle"></i> pour revoir cette visite à tout moment!</p>
+                </div>
+            `,
+            buttons: [
+                { text: '<i class="fas fa-arrow-left mr-1"></i> Retour', action: tour.back, classes: 'shepherd-button-secondary' },
+                { text: '<i class="fas fa-check mr-1"></i> Terminer', action: tour.complete, classes: 'shepherd-button-primary' }
+            ]
+        });
+
+        // Mark tour as completed when finished or cancelled
+        tour.on('complete', function() {
+            localStorage.setItem(tourKey, 'true');
+        });
+
+        tour.on('cancel', function() {
+            localStorage.setItem(tourKey, 'true');
+        });
+
+        return tour;
+    }
+
+    // Start the tour
+    function startTour() {
+        const tour = createTour();
+        tour.start();
+    }
+
+    // Check if first visit and start tour automatically
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait a bit for page to fully render
+        setTimeout(function() {
+            if (!localStorage.getItem(tourKey)) {
+                startTour();
+            }
+        }, 1000);
+    });
+    </script>
+    {% endif %}
+</body>
+</html>

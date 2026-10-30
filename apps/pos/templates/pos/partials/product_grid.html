@@ -1,0 +1,68 @@
+{% load l10n %}
+{% for product in products %}
+<button @click="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.sale_price|unlocalize }}, {{ product.current_stock|default:0|unlocalize }})"
+        {% if product.is_out_of_stock %}disabled{% endif %}
+        class="relative group p-3 rounded-xl border-2 text-left transition-all duration-200
+            {% if product.is_out_of_stock %}
+                bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 opacity-60 cursor-not-allowed
+            {% elif product.is_low_stock %}
+                bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border-orange-300 dark:border-orange-700 hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-lg hover:scale-[1.02]
+            {% else %}
+                bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg hover:scale-[1.02]
+            {% endif %}">
+
+    <!-- Stock Badge -->
+    <div class="absolute -top-2 -right-2 z-10">
+        {% if product.is_out_of_stock %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-md">
+            <i class="fas fa-times-circle mr-1"></i>Épuisé
+        </span>
+        {% elif product.is_low_stock %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-500 text-white shadow-md animate-pulse">
+            <i class="fas fa-exclamation-triangle mr-1"></i>{{ product.current_stock|floatformat:0 }}
+        </span>
+        {% else %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-500 text-white shadow-md">
+            <i class="fas fa-box mr-1"></i>{{ product.current_stock|floatformat:0 }}
+        </span>
+        {% endif %}
+    </div>
+
+    <!-- Product Info -->
+    <div class="pr-6">
+        <div class="font-semibold text-gray-800 dark:text-white truncate text-sm">{{ product.name }}</div>
+        {% if product.sku %}
+        <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono">{{ product.sku }}</div>
+        {% endif %}
+    </div>
+
+    <!-- Price & Category -->
+    <div class="flex items-center justify-between mt-2">
+        <span class="text-lg font-bold {% if product.is_out_of_stock %}text-gray-400{% else %}text-blue-600 dark:text-blue-400{% endif %}">
+            {{ product.sale_price|floatformat:0 }} <span class="text-xs font-normal">FB</span>
+        </span>
+        {% if product.category %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+            {{ product.category.name }}
+        </span>
+        {% endif %}
+    </div>
+
+    <!-- Hover overlay for quick add -->
+    {% if not product.is_out_of_stock %}
+    <div class="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <span class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+            <i class="fas fa-plus mr-1"></i>Ajouter
+        </span>
+    </div>
+    {% endif %}
+</button>
+{% empty %}
+<div class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
+        <i class="fas fa-search text-3xl text-gray-400"></i>
+    </div>
+    <p class="text-lg font-medium">Aucun produit trouvé</p>
+    <p class="text-sm mt-1">Essayez avec d'autres mots-clés</p>
+</div>
+{% endfor %}

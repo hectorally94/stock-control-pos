@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Caisse{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>.chart-container { position: relative; height: 240px; width: 100%; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-cash-register text-blue-500 mr-2"></i>Ma journée
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Bonjour {{ user.get_full_name|default:user.username }}{% if user_location %} · {{ user_location.name }}{% endif %}
+            </p>
+        </div>
+        <a href="{{ link_pos }}" class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition">
+            <i class="fas fa-plus"></i> Nouvelle vente
+        </a>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% include "dashboards/_kpi.html" with label="Mes ventes du jour" value=kpi_my_total|floatformat:0 unit="FB" icon="fa-coins" tint="blue" delta="Total encaissé aujourd'hui" delta_tone="muted" href=link_my_sales %}
+        {% with basket=kpi_avg_basket|floatformat:0 %}
+        {% include "dashboards/_kpi.html" with label="Transactions" value=kpi_my_count icon="fa-receipt" tint="green" delta="Panier moyen "|add:basket|add:" FB" delta_tone="muted" %}
+        {% endwith %}
+        {% if session_open %}
+        {% with since=session.opened_at|date:"H:i" %}
+        {% include "dashboards/_kpi.html" with label="Session caisse" value="Ouverte" icon="fa-lock-open" tint="green" delta="Ouverte depuis "|add:since delta_tone="muted" href=link_sessions %}
+        {% endwith %}
+        {% else %}
+        {% include "dashboards/_kpi.html" with label="Session caisse" value="Fermée" icon="fa-lock" tint="amber" delta="Ouvrez une session pour vendre" delta_tone="down" href=link_sessions %}
+        {% endif %}
+        {% include "dashboards/_kpi.html" with label="Crédits accordés" value=kpi_credit_total|floatformat:0 unit="FB" icon="fa-hand-holding-dollar" tint="amber" delta=kpi_credit_count|stringformat:"s"|add:" ventes à crédit" delta_tone="muted" %}
+    </div>
+
+    <!-- Chart + recent -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="font-bold text-gray-800 dark:text-white">Mes ventes par heure</h3>
+            <p class="text-xs text-gray-400 mb-3">Aujourd'hui (FB)</p>
+            <div class="chart-container"><canvas id="hourChart"></canvas></div>
+        </div>
+        <!-- Recent sales -->
+        <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="font-bold text-gray-800 dark:text-white">Mes dernières ventes</h3>
+                <a href="{{ link_my_sales }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Tout voir</a>
+            </div>
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                {% for sale in recent_sales %}
+                <a href="{% url 'pos:sale_receipt' sale.id %}" target="_blank" rel="noopener" class="flex items-center gap-3 py-2.5 -mx-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition group" title="Voir le reçu">
+                    <span class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold {% if sale.payment_method == 'credit' %}bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400{% else %}bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400{% endif %}">
+                        <i class="fas {% if sale.payment_method == 'cash' %}fa-money-bill-wave{% elif sale.payment_method == 'mobile_money' %}fa-mobile-screen{% elif sale.payment_method == 'credit' %}fa-hand-holding-dollar{% else %}fa-credit-card{% endif %}"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-semibold text-gray-800 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">{{ sale.sale_number }}</div>
+                        <div class="text-xs text-gray-400">{{ sale.get_payment_method_display }}{% if sale.customer %} · {{ sale.customer.name }}{% endif %} · {{ sale.created_at|date:"H:i" }}</div>
+                    </div>
+                    <span class="text-sm font-bold text-gray-800 dark:text-white" style="font-variant-numeric: tabular-nums;">{{ sale.total_amount|floatformat:0 }} FB</span>
+                    <i class="fas fa-receipt text-xs text-gray-300 dark:text-gray-600 group-hover:text-blue-500"></i>
+                </a>
+                {% empty %}
+                <div class="text-center py-10">
+                    <i class="fas fa-cart-shopping text-3xl text-gray-300 dark:text-gray-600 mb-3"></i>
+                    <p class="text-sm text-gray-400">Aucune vente pour l'instant aujourd'hui.</p>
+                    <a href="{{ link_pos }}" class="inline-block mt-3 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">Enregistrer votre première vente →</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ hour_labels|json_script:"h-labels" }}
+{{ hour_data|json_script:"h-data" }}
+<span id="my-sales-base" data-url="{{ link_my_sales }}"></span>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const dark = document.documentElement.classList.contains('dark');
+    const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
+    const tick = dark ? '#9ca3af' : '#6b7280';
+    const labels = JSON.parse(document.getElementById('h-labels').textContent);
+    const data = JSON.parse(document.getElementById('h-data').textContent);
+    const mySalesBase = document.getElementById('my-sales-base').dataset.url;
+    const hourCanvas = document.getElementById('hourChart');
+    hourCanvas.style.cursor = 'pointer';
+    new Chart(hourCanvas, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Ventes (FB)', data, backgroundColor: '#3b82f6', hoverBackgroundColor: '#2563eb', borderRadius: 4, maxBarThickness: 22 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
+                x: { grid: { display: false }, ticks: { color: tick, autoSkip: true, maxTicksLimit: 8 } }
+            },
+            onClick: () => { window.location = mySalesBase; }
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Dépense - {{ expense.description|truncatechars:30 }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'accounting:expense_list' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-receipt text-red-500 mr-2"></i>Détails de la Dépense
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    {{ expense.expense_date|date:"d M Y" }}
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'accounting:expense_edit' expense.pk %}" class="inline-flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                <i class="fas fa-edit"></i>
+                <span>Modifier</span>
+            </a>
+            <form method="post" action="{% url 'accounting:expense_delete' expense.pk %}" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette dépense?');">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <i class="fas fa-trash"></i>
+                    <span>Supprimer</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Amount Card -->
+    <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-red-100 text-sm">Montant de la dépense</p>
+                <p class="text-4xl font-bold mt-1">{{ expense.amount|floatformat:0 }} <span class="text-xl">FB</span></p>
+            </div>
+            <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-money-bill-wave text-3xl"></i>
+            </div>
+        </div>
+        {% if expense.is_recurring %}
+        <div class="mt-4 pt-4 border-t border-white/20 flex items-center">
+            <i class="fas fa-sync-alt mr-2"></i>
+            <span>Dépense récurrente</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Details Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-6">
+        <!-- Description -->
+        <div>
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Description</h3>
+            <p class="text-gray-800 dark:text-white">{{ expense.description }}</p>
+        </div>
+
+        <!-- Grid Info -->
+        <div class="grid grid-cols-2 gap-6">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Catégorie</h3>
+                {% if expense.expense_category %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                    {{ expense.expense_category.name }}
+                </span>
+                {% else %}
+                <span class="text-gray-400">Non catégorisée</span>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Mode de paiement</h3>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                    {% if expense.payment_method == 'cash' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                    {% elif expense.payment_method == 'mobile_money' %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300
+                    {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300{% endif %}">
+                    {{ expense.get_payment_method_display }}
+                </span>
+            </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Fournisseur</h3>
+                <p class="text-gray-800 dark:text-white">{{ expense.supplier|default:"Non spécifié" }}</p>
+            </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Référence</h3>
+                <p class="text-gray-800 dark:text-white font-mono">{{ expense.reference|default:"-" }}</p>
+            </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Emplacement</h3>
+                {% if expense.location %}
+                <p class="text-gray-800 dark:text-white">
+                    <i class="fas {% if expense.location.location_type == 'warehouse' %}fa-warehouse text-blue-500{% else %}fa-store text-green-500{% endif %} mr-1"></i>
+                    {{ expense.location.name }}
+                </p>
+                {% else %}
+                <span class="text-gray-400">Non spécifié</span>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Enregistrée par</h3>
+                <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-xs text-gray-500 dark:text-gray-400"></i>
+                    </div>
+                    <span class="text-gray-800 dark:text-white">{{ expense.user.get_full_name|default:expense.user.username }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        {% if expense.notes %}
+        <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Notes</h3>
+            <p class="text-gray-800 dark:text-white">{{ expense.notes|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Timestamps -->
+        <div class="pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+            <div class="flex items-center justify-between">
+                <span>Créée le {{ expense.created_at|date:"d/m/Y H:i" }}</span>
+                {% if expense.updated_at != expense.created_at %}
+                <span>Modifiée le {{ expense.updated_at|date:"d/m/Y H:i" }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

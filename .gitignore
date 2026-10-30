@@ -1,0 +1,29 @@
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+USER_CREDENTIALS.md
+.claude/
+
+# Client data (price list)
+apps/products/data/*.xlsx
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django generated
+staticfiles/
+media/
+*.sqlite3
+
+# OS
+.DS_Store
+._*

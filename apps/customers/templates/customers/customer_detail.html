@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'customers:customer_list' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div class="flex items-center space-x-3">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                    {{ customer.name|slice:":1"|upper }}
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-white">{{ customer.name }}</h1>
+                    <p class="text-gray-500 dark:text-gray-400">
+                        Client depuis {{ customer.created_at|date:"d M Y" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'customers:customer_edit' customer.pk %}" class="inline-flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2.5 rounded-lg font-medium transition">
+                <i class="fas fa-edit"></i>
+                <span>Modifier</span>
+            </a>
+            <form method="post" action="{% url 'customers:customer_toggle' customer.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center space-x-2 {% if customer.is_active %}bg-red-500 hover:bg-red-600{% else %}bg-green-500 hover:bg-green-600{% endif %} text-white px-4 py-2.5 rounded-lg font-medium transition">
+                    <i class="fas {% if customer.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                    <span>{% if customer.is_active %}Désactiver{% else %}Activer{% endif %}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Info Cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Contact Info -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+                <i class="fas fa-address-card text-blue-500 mr-2"></i>Contact
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-center">
+                    <i class="fas fa-phone text-gray-400 w-6"></i>
+                    <span class="text-gray-800 dark:text-white">{{ customer.phone|default:"Non renseigné" }}</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-envelope text-gray-400 w-6"></i>
+                    <span class="text-gray-800 dark:text-white">{{ customer.email|default:"Non renseigné" }}</span>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-map-marker-alt text-gray-400 w-6 mt-1"></i>
+                    <span class="text-gray-800 dark:text-white">{{ customer.address|default:"Non renseigné"|linebreaksbr }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Stats -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+                <i class="fas fa-chart-pie text-green-500 mr-2"></i>Statistiques
+            </h3>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Total achats</span>
+                    <span class="font-bold text-gray-800 dark:text-white">{{ customer.total_purchases|floatformat:0 }} FB</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Limite crédit</span>
+                    <span class="font-semibold text-blue-600 dark:text-blue-400">{{ customer.credit_limit|floatformat:0 }} FB</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Crédit utilisé</span>
+                    {% if customer.current_balance > 0 %}
+                    <span class="font-bold text-red-600 dark:text-red-400">{{ customer.current_balance|floatformat:0 }} FB</span>
+                    {% else %}
+                    <span class="font-bold text-green-600 dark:text-green-400">0 FB</span>
+                    {% endif %}
+                </div>
+                {% if customer.credit_limit > 0 %}
+                <div>
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Crédit disponible</span>
+                        <span>{{ customer.credit_limit|add:customer.current_balance|floatformat:0 }} FB</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        {% widthratio customer.current_balance customer.credit_limit 100 as usage_percent %}
+                        <div class="{% if usage_percent >= 80 %}bg-red-500{% elif usage_percent >= 50 %}bg-yellow-500{% else %}bg-green-500{% endif %} h-2 rounded-full transition-all" style="width: {% if usage_percent > 100 %}100{% else %}{{ usage_percent }}{% endif %}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Status & Notes -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+                <i class="fas fa-info-circle text-purple-500 mr-2"></i>Informations
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Statut</span>
+                    <div class="mt-1">
+                        {% if customer.is_active %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                            <i class="fas fa-check-circle mr-1"></i>Client actif
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-times-circle mr-1"></i>Client inactif
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if customer.notes %}
+                <div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Notes</span>
+                    <p class="mt-1 text-gray-800 dark:text-white text-sm">{{ customer.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Credits Alert -->
+    {% if pending_credits %}
+    <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-orange-500 text-xl mr-3"></i>
+                <div>
+                    <h3 class="font-semibold text-orange-700 dark:text-orange-300">
+                        {{ pending_credits|length }} crédit{% if pending_credits|length > 1 %}s{% endif %} en attente
+                    </h3>
+                    <p class="text-sm text-orange-600 dark:text-orange-400">
+                        Montant total à recouvrer: {{ customer.current_balance|floatformat:0 }} FB
+                    </p>
+                </div>
+            </div>
+            <a href="{% url 'customers:payment_history' customer.pk %}" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition">
+                <i class="fas fa-money-bill-wave mr-2"></i>Gérer les paiements
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div x-data="{ tab: 'credits' }">
+        <!-- Tab Buttons -->
+        <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+            <button @click="tab = 'credits'"
+                    :class="tab === 'credits' ? 'bg-white dark:bg-gray-800 shadow-md' : 'hover:bg-gray-200 dark:hover:bg-gray-600'"
+                    class="flex-1 py-2.5 px-4 rounded-lg font-medium transition text-gray-800 dark:text-white">
+                <i class="fas fa-credit-card mr-2"></i>Crédits ({{ credits|length }})
+            </button>
+            <button @click="tab = 'sales'"
+                    :class="tab === 'sales' ? 'bg-white dark:bg-gray-800 shadow-md' : 'hover:bg-gray-200 dark:hover:bg-gray-600'"
+                    class="flex-1 py-2.5 px-4 rounded-lg font-medium transition text-gray-800 dark:text-white">
+                <i class="fas fa-shopping-cart mr-2"></i>Ventes récentes ({{ recent_sales|length }})
+            </button>
+            <button @click="tab = 'payments'"
+                    :class="tab === 'payments' ? 'bg-white dark:bg-gray-800 shadow-md' : 'hover:bg-gray-200 dark:hover:bg-gray-600'"
+                    class="flex-1 py-2.5 px-4 rounded-lg font-medium transition text-gray-800 dark:text-white">
+                <i class="fas fa-money-check-alt mr-2"></i>Paiements ({{ credit_payments|length }})
+            </button>
+        </div>
+
+        <!-- Credits Tab -->
+        <div x-show="tab === 'credits'" class="mt-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 dark:bg-gray-700/50">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Référence</th>
+                            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Restant</th>
+                            <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Échéance</th>
+                            <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Statut</th>
+                            <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for credit in credits %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                            <td class="px-5 py-4 text-sm text-gray-800 dark:text-white">{{ credit.created_at|date:"d/m/Y" }}</td>
+                            <td class="px-5 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{{ credit.reference|default:"-" }}</td>
+                            <td class="px-5 py-4 text-sm text-right font-semibold text-gray-800 dark:text-white">{{ credit.amount|floatformat:0 }} FB</td>
+                            <td class="px-5 py-4 text-sm text-right font-bold {% if credit.remaining_amount > 0 %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %}">{{ credit.remaining_amount|floatformat:0 }} FB</td>
+                            <td class="px-5 py-4 text-sm text-center">
+                                {% if credit.due_date %}
+                                <span class="{% if credit.is_overdue %}text-red-600 dark:text-red-400 font-semibold{% else %}text-gray-600 dark:text-gray-400{% endif %}">
+                                    {{ credit.due_date|date:"d/m/Y" }}
+                                </span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-4 text-center">
+                                {% if credit.status == 'paid' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                    <i class="fas fa-check mr-1"></i>Payé
+                                </span>
+                                {% elif credit.status == 'partial' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
+                                    <i class="fas fa-clock mr-1"></i>Partiel
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                                    <i class="fas fa-hourglass-half mr-1"></i>En attente
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-4 text-center">
+                                {% if credit.status != 'paid' %}
+                                <a href="{% url 'customers:record_payment' credit.pk %}"
+                                   class="inline-flex items-center px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition">
+                                    <i class="fas fa-money-bill mr-1"></i>Payer
+                                </a>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-credit-card text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                                <p>Aucun crédit enregistré</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sales Tab -->
+        <div x-show="tab === 'sales'" class="mt-4" style="display: none;">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 dark:bg-gray-700/50">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Référence</th>
+                            <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Articles</th>
+                            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total</th>
+                            <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Paiement</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for sale in recent_sales %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                            <td class="px-5 py-4">
+                                <div class="text-sm text-gray-800 dark:text-white">{{ sale.created_at|date:"d/m/Y" }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ sale.created_at|time:"H:i" }}</div>
+                            </td>
+                            <td class="px-5 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{{ sale.reference|default:"-" }}</td>
+                            <td class="px-5 py-4 text-sm text-center text-gray-800 dark:text-white">{{ sale.items.count }}</td>
+                            <td class="px-5 py-4 text-sm text-right font-bold text-gray-800 dark:text-white">{{ sale.total_amount|floatformat:0 }} FB</td>
+                            <td class="px-5 py-4 text-center">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                                    {% if sale.payment_method == 'cash' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                                    {% elif sale.payment_method == 'credit' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300
+                                    {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300{% endif %}">
+                                    {{ sale.get_payment_method_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-shopping-cart text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                                <p>Aucune vente récente</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div x-show="tab === 'payments'" class="mt-4" style="display: none;">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 dark:bg-gray-700/50">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                            <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Méthode</th>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Référence</th>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Reçu par</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for payment in credit_payments %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                            <td class="px-5 py-4">
+                                <div class="text-sm text-gray-800 dark:text-white">{{ payment.created_at|date:"d/m/Y" }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ payment.created_at|time:"H:i" }}</div>
+                            </td>
+                            <td class="px-5 py-4 text-sm text-right font-bold text-green-600 dark:text-green-400">+{{ payment.amount|floatformat:0 }} FB</td>
+                            <td class="px-5 py-4 text-center">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                                    {% if payment.payment_method == 'cash' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                                    {% elif payment.payment_method == 'mobile_money' %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300
+                                    {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300{% endif %}">
+                                    {{ payment.get_payment_method_display }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{{ payment.payment_reference|default:"-" }}</td>
+                            <td class="px-5 py-4 text-sm text-gray-600 dark:text-gray-400">{{ payment.user.get_full_name|default:payment.user.username }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-money-check-alt text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                                <p>Aucun paiement enregistré</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

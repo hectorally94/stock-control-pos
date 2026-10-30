@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Produits en Stock{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ tab: '{{ active_tab }}', loading: false }">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'stock:dashboard' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-box text-blue-500 mr-2"></i>Produits en Stock
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    <strong class="text-blue-600 dark:text-blue-400">{{ total_products }}</strong> produit{{ total_products|pluralize }}
+                    &middot;
+                    <strong class="text-blue-600 dark:text-blue-400">{{ total_quantity|floatformat:"-3" }}</strong> unités totales
+                </p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% include "partials/export_buttons.html" %}
+            <a href="{% url 'stock:entry' %}" class="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md hover:shadow-lg transition">
+                <i class="fas fa-plus-circle"></i>
+                <span>Nouvelle Entrée</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters (apply to both tabs) -->
+    <form method="get" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 flex flex-wrap items-end gap-4">
+        <input type="hidden" name="tab" :value="tab">
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rechercher</label>
+            <div class="relative">
+                <input type="text" name="search" value="{{ search }}" placeholder="Nom, SKU, code-barres..." autocomplete="off"
+                       @input.debounce.450ms="loading = true; $el.form.requestSubmit()"
+                       x-init="if ($el.value) { $el.focus(); $el.setSelectionRange($el.value.length, $el.value.length); }"
+                       class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" x-show="!loading"></i>
+                <i class="fas fa-spinner fa-spin absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" x-show="loading" x-cloak></i>
+            </div>
+        </div>
+        <div class="w-48">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categorie</label>
+            <select name="category" @change="loading = true; $el.form.requestSubmit()" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                <option value="">Toutes</option>
+                {% for cat in categories %}
+                <option value="{{ cat.pk }}" {% if selected_category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if locations %}
+        <div class="w-48">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Emplacement</label>
+            <select name="location" @change="loading = true; $el.form.requestSubmit()" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 dark:text-white">
+                <option value="">Tous</option>
+                {% for loc in locations %}
+                <option value="{{ loc.pk }}" {% if selected_location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="flex items-center space-x-2">
+            <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                <i class="fas fa-filter mr-2"></i>Filtrer
+            </button>
+            {% if search or selected_category or selected_location %}
+            <a href="{% url 'stock:in_stock' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-lg transition">
+                <i class="fas fa-times mr-2"></i>Reset
+            </a>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+        <button type="button" @click="tab = 'products'"
+                :class="tab === 'products' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                class="px-4 py-2.5 -mb-px border-b-2 font-medium transition flex items-center gap-2">
+            <i class="fas fa-box"></i>Par produit
+            <span class="px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">{{ total_products }}</span>
+        </button>
+        <button type="button" @click="tab = 'units'"
+                :class="tab === 'units' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                class="px-4 py-2.5 -mb-px border-b-2 font-medium transition flex items-center gap-2">
+            <i class="fas fa-layer-group"></i>Détail des unités
+            <span class="px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">{{ total_quantity|floatformat:"-3" }}</span>
+        </button>
+    </div>
+
+    <!-- TAB 1: By product (distinct products = the 31) -->
+    <div x-show="tab === 'products'" x-cloak class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categorie</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacements</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantité totale</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for item in by_product %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4">
+                            <a href="{% url 'products:product_detail' item.product.pk %}" class="font-medium text-gray-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                                <i class="fas fa-box text-blue-400 mr-2"></i>{{ item.product.name }}
+                            </a>
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                                <i class="fas fa-folder mr-1"></i>{% if item.product.category %}{{ item.product.category.name }}{% else %}—{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-center text-gray-600 dark:text-gray-300">
+                            <i class="fas fa-map-marker-alt text-teal-500 mr-1"></i>{{ item.loc_count }}
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="font-mono font-semibold text-gray-800 dark:text-white">{{ item.total_qty|floatformat:"-3" }}</span>
+                            <span class="text-xs text-gray-400 ml-1">{{ item.product.get_unit_display }}s</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-5 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-box-open text-4xl mb-3 block text-gray-300 dark:text-gray-600"></i>
+                            Aucun produit en stock.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 2: Unit detail per emplacement (sums to the 13526) -->
+    <div x-show="tab === 'units'" x-cloak class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacement</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantité</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for s in stock_rows %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4">
+                            <a href="{% url 'products:product_detail' s.product.pk %}" class="font-medium text-gray-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                                <i class="fas fa-box text-blue-400 mr-2"></i>{{ s.product.name }}
+                            </a>
+                        </td>
+                        <td class="px-5 py-4 text-gray-600 dark:text-gray-300">
+                            <i class="fas fa-map-marker-alt text-teal-500 mr-1"></i>{% if s.location %}{{ s.location.name }}{% else %}Sans emplacement{% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="font-mono font-semibold text-gray-800 dark:text-white">{{ s.quantity|floatformat:"-3" }}</span>
+                            <span class="text-xs text-gray-400 ml-1">{{ s.product.get_unit_display }}s</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="px-5 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-layer-group text-4xl mb-3 block text-gray-300 dark:text-gray-600"></i>
+                            Aucune unité en stock.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if stock_rows %}
+                <tfoot class="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-600">
+                    <tr>
+                        <td colspan="2" class="px-5 py-3 text-right font-semibold text-gray-700 dark:text-gray-200">Total unités</td>
+                        <td class="px-5 py-3 text-right font-mono font-bold text-blue-600 dark:text-blue-400">{{ total_quantity|floatformat:"-3" }}</td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Gérant{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>.chart-container { position: relative; height: 260px; width: 100%; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>Tableau de bord — Gérant
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <i class="fas fa-location-dot mr-1"></i>{% if scoped_location %}{{ scoped_location.name }}{% else %}{{ user.enterprise.name }} · Toutes les boutiques{% endif %} · Opérations
+            </p>
+        </div>
+        <a href="{{ link_sales }}" class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+            Historique des ventes <i class="fas fa-arrow-right text-xs"></i>
+        </a>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% include "dashboards/_kpi.html" with label="Ventes du jour" value=kpi_today_total|floatformat:0 unit="FB" icon="fa-cash-register" tint="blue" delta=kpi_today_count|stringformat:"s"|add:" ventes aujourd'hui" delta_tone="muted" href=link_sales %}
+        {% include "dashboards/_kpi.html" with label="Transferts en attente" value=kpi_pending_transfers icon="fa-truck-fast" tint="amber" delta="À expédier ou recevoir" delta_tone="muted" href=link_transfers %}
+        {% include "dashboards/_kpi.html" with label="Stock faible" value=kpi_low unit="produits" icon="fa-triangle-exclamation" tint="red" delta=kpi_out|stringformat:"s"|add:" en rupture" delta_tone="down" href=link_low %}
+        {% include "dashboards/_kpi.html" with label="Dépenses du mois" value=kpi_month_expenses|floatformat:0 unit="FB" icon="fa-receipt" tint="green" delta=kpi_expense_count|stringformat:"s"|add:" dépenses" delta_tone="muted" href=link_expenses %}
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="font-bold text-gray-800 dark:text-white">Ventes — 14 derniers jours</h3>
+            <p class="text-xs text-gray-400 mb-3">Total quotidien (FB)</p>
+            <div class="chart-container"><canvas id="salesChart"></canvas></div>
+        </div>
+        <!-- Low stock list -->
+        <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-gray-800 dark:text-white">À réapprovisionner</h3>
+                <a href="{{ link_low }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Tout voir</a>
+            </div>
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                {% for s in low_items %}
+                <a href="{% url 'stock:movements' %}?product={{ s.product.id }}{% if s.location %}&location={{ s.location.id }}{% endif %}" class="flex items-center gap-3 py-2.5 -mx-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition group" title="Historique du stock">
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 {% if s.quantity <= 0 %}bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400{% else %}bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400{% endif %}"><i class="fas fa-box"></i></span>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-semibold text-gray-800 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">{{ s.product.name }}</div>
+                        <div class="text-xs text-gray-400 truncate">{% if s.location %}{{ s.location.name }} · {% endif %}{{ s.quantity|floatformat:0 }} {{ s.product.unit }}</div>
+                    </div>
+                    <span class="text-xs font-bold {% if s.quantity <= 0 %}text-red-600 dark:text-red-400{% else %}text-amber-600 dark:text-amber-400{% endif %}">{% if s.quantity <= 0 %}Rupture{% else %}Faible{% endif %}</span>
+                </a>
+                {% empty %}
+                <p class="text-sm text-gray-400 text-center py-8"><i class="fas fa-circle-check text-green-500 mr-1"></i>Tous les stocks sont sains.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent sales -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="font-bold text-gray-800 dark:text-white">Activité récente</h3>
+            <span class="text-xs text-gray-400">Dernières ventes</span>
+        </div>
+        <div class="divide-y divide-gray-100 dark:divide-gray-700">
+            {% for sale in recent_sales %}
+            <a href="{% url 'pos:sale_receipt' sale.id %}" target="_blank" rel="noopener" class="flex items-center gap-3 py-2.5 -mx-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition group" title="Voir le reçu">
+                <span class="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center flex-shrink-0"><i class="fas fa-check"></i></span>
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-semibold text-gray-800 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">{{ sale.sale_number }}{% if sale.customer %} · {{ sale.customer.name }}{% endif %}</div>
+                    <div class="text-xs text-gray-400">{{ sale.get_payment_method_display }}{% if sale.location %} · {{ sale.location.name }}{% endif %} · {{ sale.created_at|date:"d/m H:i" }}</div>
+                </div>
+                <span class="text-sm font-bold text-gray-800 dark:text-white" style="font-variant-numeric: tabular-nums;">{{ sale.total_amount|floatformat:0 }} FB</span>
+                <i class="fas fa-receipt text-xs text-gray-300 dark:text-gray-600 group-hover:text-blue-500"></i>
+            </a>
+            {% empty %}
+            <p class="text-sm text-gray-400 text-center py-8">Aucune vente enregistrée.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{{ sales_labels|json_script:"s-labels" }}
+{{ sales_data|json_script:"s-data" }}
+{{ sales_iso|json_script:"s-iso" }}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const dark = document.documentElement.classList.contains('dark');
+    const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
+    const tick = dark ? '#9ca3af' : '#6b7280';
+    const labels = JSON.parse(document.getElementById('s-labels').textContent);
+    const data = JSON.parse(document.getElementById('s-data').textContent);
+    const iso = JSON.parse(document.getElementById('s-iso').textContent);
+    const canvas = document.getElementById('salesChart');
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 240);
+    grad.addColorStop(0, 'rgba(59,130,246,.28)');
+    grad.addColorStop(1, 'rgba(59,130,246,0)');
+    const chart = new Chart(canvas, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Ventes (FB)', data, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2.5, fill: true, tension: .35, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: '#3b82f6' }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
+                x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } }
+            },
+            onClick: (e, els) => { if (els.length) window.location = "{{ link_sales|slice:':-11' }}?date=" + iso[els[0].index]; }
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,710 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Caisse - Stock Control & POS{% endblock %}
+
+{% block extra_head %}
+<style>
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+    .htmx-request.htmx-indicator { display: inline-block; }
+
+    /* Smooth scrollbar */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    /* Product card animations */
+    @keyframes addedToCart {
+        0% { transform: scale(1); }
+        50% { transform: scale(0.95); background-color: rgba(34, 197, 94, 0.2); }
+        100% { transform: scale(1); }
+    }
+    .added-to-cart { animation: addedToCart 0.3s ease-out; }
+</style>
+{% endblock %}
+
+{% block main_class %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 dark:bg-gray-900" x-data="posApp()">
+    <!-- Compact Header -->
+    <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+                    <i class="fas fa-cash-register text-blue-500 mr-2"></i>
+                    <span>Caisse POS</span>
+                </h1>
+                {% if user_location %}
+                <span class="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                    <i class="fas fa-map-marker-alt mr-1"></i>{{ user_location.name }}
+                </span>
+                {% endif %}
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-500 dark:text-gray-400" x-text="currentTime"></span>
+                <a href="{% url 'pos:dashboard' %}" class="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition">
+                    <i class="fas fa-chart-line text-lg"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto p-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <!-- Products Section (Left - 7 cols) -->
+            <div class="lg:col-span-7 space-y-4">
+                <!-- Search & Category Filters -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <!-- Search Bar -->
+                    <div class="relative mb-4">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text"
+                               id="search-input"
+                               name="q"
+                               x-model="searchQuery"
+                               @keyup.debounce.300ms="searchProducts()"
+                               placeholder="Rechercher: nom, code-barre, SKU, catégorie..."
+                               class="w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-lg"
+                               autocomplete="off">
+                        <button x-show="searchQuery" @click="clearSearch()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                        <div id="search-indicator" class="htmx-indicator absolute right-12 top-1/2 -translate-y-1/2">
+                            <i class="fas fa-spinner fa-spin text-blue-500"></i>
+                        </div>
+                    </div>
+
+                    <!-- Category Tabs -->
+                    <div class="flex items-center space-x-2 overflow-x-auto pb-2 custom-scrollbar">
+                        <button @click="filterByCategory(null)"
+                                :class="selectedCategory === null ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+                                class="flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition flex items-center space-x-2">
+                            <i class="fas fa-fire text-orange-400"></i>
+                            <span>Populaires</span>
+                        </button>
+                        <button @click="filterByCategory('all')"
+                                :class="selectedCategory === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+                                class="flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition flex items-center space-x-2">
+                            <i class="fas fa-th-large"></i>
+                            <span>Tous</span>
+                        </button>
+                        {% for category in categories %}
+                        <button @click="filterByCategory('{{ category.id }}')"
+                                :class="selectedCategory === '{{ category.id }}' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+                                class="flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition whitespace-nowrap">
+                            {{ category.name }}
+                            <span class="ml-1 text-xs opacity-70">({{ category.product_count }})</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Product Grid -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-semibold text-gray-800 dark:text-white text-sm">
+                            <i class="fas fa-boxes text-blue-500 mr-2"></i>
+                            <span x-text="selectedCategory === null ? 'Produits Populaires' : (selectedCategory === 'all' ? 'Tous les Produits' : 'Produits')"></span>
+                        </h2>
+                        <span class="text-xs text-gray-500 dark:text-gray-400" x-show="!isLoading">
+                            <span x-text="productsCount"></span> produits
+                        </span>
+                    </div>
+
+                    <div id="product-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar pr-2">
+                        {% for product in popular_products %}
+                        <button @click="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.sale_price|unlocalize }}, {{ product.current_stock|default:0|unlocalize }})"
+                                {% if product.is_out_of_stock %}disabled{% endif %}
+                                class="relative group p-3 rounded-xl border-2 text-left transition-all duration-200
+                                    {% if product.is_out_of_stock %}
+                                        bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 opacity-60 cursor-not-allowed
+                                    {% elif product.is_low_stock %}
+                                        bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border-orange-300 dark:border-orange-700 hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-lg hover:scale-[1.02]
+                                    {% else %}
+                                        bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg hover:scale-[1.02]
+                                    {% endif %}">
+                            <!-- Stock Badge -->
+                            <div class="absolute -top-2 -right-2 z-10">
+                                {% if product.is_out_of_stock %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-md">
+                                    <i class="fas fa-times-circle mr-1"></i>Épuisé
+                                </span>
+                                {% elif product.is_low_stock %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-500 text-white shadow-md animate-pulse">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>{{ product.current_stock|floatformat:0 }}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-500 text-white shadow-md">
+                                    <i class="fas fa-box mr-1"></i>{{ product.current_stock|floatformat:0 }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <!-- Product Info -->
+                            <div class="pr-6">
+                                <div class="font-semibold text-gray-800 dark:text-white truncate text-sm">{{ product.name }}</div>
+                                {% if product.sku %}
+                                <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono">{{ product.sku }}</div>
+                                {% endif %}
+                            </div>
+                            <!-- Price & Category -->
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-lg font-bold {% if product.is_out_of_stock %}text-gray-400{% else %}text-blue-600 dark:text-blue-400{% endif %}">
+                                    {{ product.sale_price|floatformat:0 }} <span class="text-xs font-normal">FB</span>
+                                </span>
+                                {% if product.category %}
+                                <span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 truncate max-w-[60px]">
+                                    {{ product.category.name }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <!-- Hover overlay -->
+                            {% if not product.is_out_of_stock %}
+                            <div class="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                                    <i class="fas fa-plus mr-1"></i>Ajouter
+                                </span>
+                            </div>
+                            {% endif %}
+                        </button>
+                        {% empty %}
+                        <div class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-box-open text-4xl mb-2"></i>
+                            <p>Aucun produit populaire</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart & Payment (Right - 5 cols) -->
+            <div class="lg:col-span-5 space-y-4">
+                <!-- Cart -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col" style="max-height: calc(100vh - 280px);">
+                    <!-- Cart Header -->
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="font-bold text-gray-800 dark:text-white flex items-center">
+                            <i class="fas fa-shopping-cart text-green-500 mr-2"></i>
+                            Panier
+                            <span x-show="cart.length > 0" class="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full" x-text="cartItemsCount"></span>
+                        </h2>
+                        <button @click="clearCart()" x-show="cart.length > 0" class="text-red-500 hover:text-red-700 text-sm font-medium transition flex items-center">
+                            <i class="fas fa-trash mr-1"></i>Vider
+                        </button>
+                    </div>
+
+                    <!-- Cart Items -->
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2" style="min-height: 150px;">
+                        <template x-for="(item, index) in cart" :key="item.id">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1 min-w-0 pr-2">
+                                        <div class="font-semibold text-gray-800 dark:text-white text-sm truncate" x-text="item.name"></div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                            <span x-text="item.price.toLocaleString()"></span> FB/unité
+                                        </div>
+                                    </div>
+                                    <button @click="removeFromCart(index)" class="text-red-400 hover:text-red-600 transition p-1">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Quantity Controls & Total -->
+                                <div class="flex items-center justify-between mt-2">
+                                    <div class="flex items-center space-x-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                                        <button @click="decrementQuantity(index)" class="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-l-lg transition">
+                                            <i class="fas fa-minus text-xs"></i>
+                                        </button>
+                                        <input type="number"
+                                               :value="item.quantity"
+                                               @change="updateQuantity(index, $event.target.value)"
+                                               @focus="$event.target.select()"
+                                               min="1"
+                                               :max="item.stock"
+                                               class="w-12 h-8 text-center border-0 bg-transparent text-gray-800 dark:text-white font-semibold focus:ring-0">
+                                        <button @click="incrementQuantity(index)" class="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-r-lg transition"
+                                                :disabled="item.quantity >= item.stock"
+                                                :class="item.quantity >= item.stock ? 'opacity-50 cursor-not-allowed' : ''">
+                                            <i class="fas fa-plus text-xs"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="text-right">
+                                        <div class="font-bold text-green-600 dark:text-green-400" x-text="(item.quantity * item.price).toLocaleString() + ' FB'"></div>
+                                        <div class="text-xs text-gray-400" x-show="item.stock > 0">
+                                            Stock: <span x-text="item.stock"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Stock warning -->
+                                <div x-show="item.quantity >= item.stock && item.stock > 0" class="mt-2 text-xs text-orange-600 dark:text-orange-400 flex items-center">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    Quantité maximale atteinte
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Empty Cart -->
+                        <div x-show="cart.length === 0" class="text-center py-8 text-gray-400">
+                            <i class="fas fa-shopping-basket text-4xl mb-3"></i>
+                            <p class="font-medium">Panier vide</p>
+                            <p class="text-xs mt-1">Ajoutez des produits pour commencer</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <!-- Customer Selection -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Client</label>
+                        <div class="flex space-x-2">
+                            <select x-model="customer_id" class="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                <option value="">Client Anonyme</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}">{{ customer.name }} {% if customer.phone %}- {{ customer.phone }}{% endif %}</option>
+                                {% endfor %}
+                                <template x-for="c in newCustomers" :key="c.id">
+                                    <option :value="c.id" x-text="c.name"></option>
+                                </template>
+                            </select>
+                            <button type="button" @click="showCustomerModal = true"
+                                    class="px-3 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
+                                    title="Nouveau client">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Totals -->
+                    <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700 rounded-xl p-4 mb-4">
+                        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <span>Sous-total (<span x-text="cartItemsCount"></span> articles)</span>
+                            <span class="font-medium" x-text="subtotal.toLocaleString() + ' FB'"></span>
+                        </div>
+                        <div class="flex justify-between text-2xl font-bold text-gray-800 dark:text-white border-t border-gray-200 dark:border-gray-600 pt-3">
+                            <span>TOTAL</span>
+                            <span class="text-green-600 dark:text-green-400" x-text="total.toLocaleString() + ' FB'"></span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Mode de paiement</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button type="button" @click="payment_method = 'cash'"
+                                    :class="payment_method === 'cash' ? 'bg-green-500 text-white border-green-500 shadow-md' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-400'"
+                                    class="flex flex-col items-center justify-center py-3 border-2 rounded-xl transition font-medium text-xs">
+                                <i class="fas fa-money-bill-wave text-lg mb-1"></i>
+                                <span>Espèces</span>
+                            </button>
+                            <button type="button" @click="payment_method = 'mobile_money'"
+                                    :class="payment_method === 'mobile_money' ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-orange-400'"
+                                    class="flex flex-col items-center justify-center py-3 border-2 rounded-xl transition font-medium text-xs">
+                                <i class="fas fa-mobile-alt text-lg mb-1"></i>
+                                <span>Mobile</span>
+                            </button>
+                            <button type="button" @click="payment_method = 'card'"
+                                    :class="payment_method === 'card' ? 'bg-blue-500 text-white border-blue-500 shadow-md' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-400'"
+                                    class="flex flex-col items-center justify-center py-3 border-2 rounded-xl transition font-medium text-xs">
+                                <i class="fas fa-credit-card text-lg mb-1"></i>
+                                <span>Carte</span>
+                            </button>
+                            <button type="button" @click="payment_method = 'credit'"
+                                    :class="payment_method === 'credit' ? 'bg-purple-500 text-white border-purple-500 shadow-md' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-purple-400'"
+                                    class="flex flex-col items-center justify-center py-3 border-2 rounded-xl transition font-medium text-xs">
+                                <i class="fas fa-hand-holding-usd text-lg mb-1"></i>
+                                <span>Crédit</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Credit warning -->
+                    <div x-show="payment_method === 'credit' && !customer_id" class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg text-yellow-700 dark:text-yellow-300 text-sm">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Sélectionnez un client pour les ventes à crédit
+                    </div>
+
+                    <!-- Complete Sale Button -->
+                    <button @click="completeSale()"
+                            :disabled="cart.length === 0 || (payment_method === 'credit' && !customer_id) || isProcessing"
+                            class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-xl font-bold transition shadow-lg hover:shadow-xl disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg">
+                        <template x-if="!isProcessing">
+                            <span class="flex items-center space-x-2">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Valider la Vente</span>
+                            </span>
+                        </template>
+                        <template x-if="isProcessing">
+                            <span class="flex items-center space-x-2">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Traitement...</span>
+                            </span>
+                        </template>
+                    </button>
+
+                    <!-- Quick shortcuts -->
+                    <div class="mt-3 flex justify-center space-x-4 text-xs text-gray-400">
+                        <span><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">F2</kbd> Recherche</span>
+                        <span><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">F12</kbd> Valider</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Creation Modal -->
+    <div x-show="showCustomerModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+         @click.self="showCustomerModal = false"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             @click.away="showCustomerModal = false">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-user-plus text-blue-500 mr-2"></i>Nouveau Client
+                </h3>
+                <button @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="createCustomer()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom complet *</label>
+                        <input type="text" x-model="newCustomer.name" required
+                               class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                               placeholder="Ex: Jean Dupont">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
+                        <input type="tel" x-model="newCustomer.phone"
+                               class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                               placeholder="Ex: +257 79 123 456">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                        <input type="email" x-model="newCustomer.email"
+                               class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                               placeholder="Ex: client@email.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adresse</label>
+                        <input type="text" x-model="newCustomer.address"
+                               class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                               placeholder="Ex: Quartier Asiatique, Bujumbura">
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 mt-6">
+                    <button type="button" @click="showCustomerModal = false"
+                            class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
+                        Annuler
+                    </button>
+                    <button type="submit" :disabled="!newCustomer.name"
+                            class="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-xl transition font-medium">
+                        <i class="fas fa-check mr-2"></i>Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div x-show="showSuccessToast"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-2"
+         class="fixed bottom-6 right-6 bg-green-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center space-x-3 z-50">
+        <i class="fas fa-check-circle text-2xl"></i>
+        <div>
+            <div class="font-bold">Vente enregistrée!</div>
+            <div class="text-sm text-green-100" x-text="successMessage"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function posApp() {
+    return {
+        cart: [],
+        customer_id: '',
+        payment_method: 'cash',
+        showCustomerModal: false,
+        showSuccessToast: false,
+        successMessage: '',
+        isProcessing: false,
+        isLoading: false,
+        newCustomers: [],
+        newCustomer: {
+            name: '',
+            phone: '',
+            email: '',
+            address: ''
+        },
+        searchQuery: '',
+        selectedCategory: null,
+        productsCount: {{ popular_products|length }},
+        currentTime: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+
+        init() {
+            // Update time every minute
+            setInterval(() => {
+                this.currentTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            }, 60000);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    document.getElementById('search-input').focus();
+                }
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    this.completeSale();
+                }
+            });
+        },
+
+        get subtotal() {
+            return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        },
+
+        get total() {
+            return this.subtotal;
+        },
+
+        get cartItemsCount() {
+            return this.cart.reduce((sum, item) => sum + item.quantity, 0);
+        },
+
+        addToCart(id, name, price, stock) {
+            const existing = this.cart.find(item => item.id === id);
+            if (existing) {
+                if (existing.quantity < stock || stock === 0) {
+                    existing.quantity++;
+                }
+            } else {
+                this.cart.push({ id, name, price, quantity: 1, stock: stock });
+            }
+
+            // Visual feedback
+            const btn = event.target.closest('button');
+            if (btn) {
+                btn.classList.add('added-to-cart');
+                setTimeout(() => btn.classList.remove('added-to-cart'), 300);
+            }
+        },
+
+        removeFromCart(index) {
+            this.cart.splice(index, 1);
+        },
+
+        incrementQuantity(index) {
+            const item = this.cart[index];
+            if (item.quantity < item.stock || item.stock === 0) {
+                item.quantity++;
+            }
+        },
+
+        decrementQuantity(index) {
+            const item = this.cart[index];
+            if (item.quantity > 1) {
+                item.quantity--;
+            } else {
+                this.removeFromCart(index);
+            }
+        },
+
+        updateQuantity(index, value) {
+            const item = this.cart[index];
+            const qty = parseInt(value) || 1;
+            item.quantity = Math.max(1, Math.min(qty, item.stock || qty));
+        },
+
+        clearCart() {
+            if (confirm('Vider le panier ?')) {
+                this.cart = [];
+            }
+        },
+
+        async searchProducts() {
+            this.isLoading = true;
+            const params = new URLSearchParams();
+            if (this.searchQuery) params.append('q', this.searchQuery);
+            if (this.selectedCategory && this.selectedCategory !== 'all') {
+                params.append('category', this.selectedCategory);
+            }
+
+            try {
+                const response = await fetch('{% url "pos:search_products" %}?' + params.toString());
+                const html = await response.text();
+                document.getElementById('product-grid').innerHTML = html;
+
+                // Count products
+                const buttons = document.getElementById('product-grid').querySelectorAll('button:not([disabled])');
+                this.productsCount = buttons.length;
+            } catch (error) {
+                console.error('Search error:', error);
+            }
+            this.isLoading = false;
+        },
+
+        clearSearch() {
+            this.searchQuery = '';
+            this.searchProducts();
+        },
+
+        async refreshProducts() {
+            // Refresh the product grid to show updated stock
+            // If we're viewing a category or search results, use searchProducts
+            // Otherwise reload popular products
+            if (this.selectedCategory !== null || this.searchQuery) {
+                await this.searchProducts();
+            } else {
+                // Reload popular products via AJAX
+                try {
+                    const response = await fetch('{% url "pos:search_products" %}?popular=1');
+                    const html = await response.text();
+                    document.getElementById('product-grid').innerHTML = html;
+
+                    // Count products
+                    const buttons = document.getElementById('product-grid').querySelectorAll('button:not([disabled])');
+                    this.productsCount = buttons.length;
+                } catch (error) {
+                    console.error('Refresh error:', error);
+                }
+            }
+        },
+
+        filterByCategory(categoryId) {
+            this.selectedCategory = categoryId;
+            if (categoryId === null) {
+                // Show popular products
+                this.refreshProducts();
+            } else {
+                this.searchProducts();
+            }
+        },
+
+        async createCustomer() {
+            if (!this.newCustomer.name) return;
+
+            try {
+                const response = await fetch('{% url "pos:create_customer" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(this.newCustomer)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    this.newCustomers.push({
+                        id: result.customer_id,
+                        name: result.customer_name
+                    });
+                    this.customer_id = result.customer_id;
+                    this.showCustomerModal = false;
+                    this.newCustomer = { name: '', phone: '', email: '', address: '' };
+                } else {
+                    alert('Erreur: ' + (result.error || 'Impossible de créer le client'));
+                }
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            }
+        },
+
+        async completeSale() {
+            if (this.cart.length === 0 || this.isProcessing) return;
+            if (this.payment_method === 'credit' && !this.customer_id) {
+                alert('Veuillez sélectionner un client pour les ventes à crédit');
+                return;
+            }
+
+            this.isProcessing = true;
+
+            const data = {
+                customer_id: this.customer_id || null,
+                subtotal: this.subtotal,
+                discount_amount: 0,
+                discount_percent: 0,
+                tax_amount: 0,
+                total_amount: this.total,
+                amount_paid: this.total,
+                change_amount: 0,
+                payment_method: this.payment_method,
+                items: this.cart.map(item => ({
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    unit_price: item.price,
+                    total_price: item.price * item.quantity
+                }))
+            };
+
+            try {
+                const response = await fetch('{% url "pos:create_sale" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    // Show success toast
+                    this.successMessage = `Vente ${result.sale_number} - ${this.total.toLocaleString()} FB`;
+                    this.showSuccessToast = true;
+                    setTimeout(() => this.showSuccessToast = false, 4000);
+
+                    // Clear cart first
+                    this.cart = [];
+                    this.customer_id = '';
+
+                    // Refresh product list to show updated stock
+                    await this.refreshProducts();
+
+                    // Ask for receipt (after refresh)
+                    setTimeout(() => {
+                        const downloadReceipt = confirm(`Vente ${result.sale_number} enregistrée!\n\nVoulez-vous imprimer le reçu ?`);
+                        if (downloadReceipt) {
+                            window.open(`/pos/sales/${result.sale_id}/receipt/`, '_blank');
+                        }
+                    }, 100);
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            }
+
+            this.isProcessing = false;
+        }
+    }
+}
+</script>
+{% endblock %}

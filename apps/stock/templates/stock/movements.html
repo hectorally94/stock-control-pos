@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Mouvements de Stock{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'stock:dashboard' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-exchange-alt text-green-500 mr-2"></i>Mouvements de Stock
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    Historique des entrées et sorties
+                </p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% include "partials/export_buttons.html" %}
+            <a href="{% url 'stock:entry' %}" class="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md hover:shadow-lg transition">
+                <i class="fas fa-plus-circle"></i>
+                <span>Nouvelle Entrée</span>
+            </a>
+        </div>
+    </div>
+
+    {% if filter_product or filter_location or filter_day %}
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="text-blue-700 dark:text-blue-300">
+            <i class="fas fa-clock-rotate-left mr-2"></i>Historique
+            {% if filter_product %}de <strong>{{ filter_product.name }}</strong>{% endif %}
+            {% if filter_location %}à <strong>{{ filter_location.name }}</strong>{% endif %}
+            {% if filter_day %}du <strong>{{ filter_day|date:"d/m/Y" }}</strong>{% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            {% if filter_location %}
+            <a href="{% url 'locations:detail' filter_location.pk %}" class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-gray-700 border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-gray-600 transition text-sm">
+                <i class="fas fa-arrow-left mr-1"></i>Retour à l'emplacement
+            </a>
+            {% endif %}
+            <a href="{% url 'stock:movements' %}" class="inline-flex items-center px-3 py-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition text-sm">
+                <i class="fas fa-times mr-1"></i>Tout voir
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
+        <form method="get" class="flex flex-wrap items-end gap-4">
+            {% if filter_product %}<input type="hidden" name="product" value="{{ filter_product.pk }}">{% endif %}
+            {% if filter_location %}<input type="hidden" name="location" value="{{ filter_location.pk }}">{% endif %}
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rechercher</label>
+                <div class="relative">
+                    <input type="text" name="search" value="{{ search }}" placeholder="Produit, référence..."
+                           class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-800 dark:text-white">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+            <div class="w-40">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+                <select name="type" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-800 dark:text-white">
+                    <option value="">Tous</option>
+                    <option value="entry" {% if selected_type == 'entry' %}selected{% endif %}>Entrées</option>
+                    <option value="exit" {% if selected_type == 'exit' %}selected{% endif %}>Sorties</option>
+                </select>
+            </div>
+            <div class="w-48">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Raison</label>
+                <select name="reason" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-800 dark:text-white">
+                    <option value="">Toutes</option>
+                    {% for value, label in reason_choices %}
+                    <option value="{{ value }}" {% if selected_reason == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="w-40">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Période</label>
+                <select name="date" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-800 dark:text-white">
+                    <option value="">Tout</option>
+                    <option value="today" {% if selected_date == 'today' %}selected{% endif %}>Aujourd'hui</option>
+                    <option value="week" {% if selected_date == 'week' %}selected{% endif %}>Cette semaine</option>
+                    <option value="month" {% if selected_date == 'month' %}selected{% endif %}>Ce mois</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button type="submit" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition">
+                    <i class="fas fa-filter mr-2"></i>Filtrer
+                </button>
+                {% if search or selected_type or selected_reason or selected_date %}
+                <a href="{% url 'stock:movements' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-lg transition">
+                    <i class="fas fa-times mr-2"></i>Reset
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Movements Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantité</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Raison</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacement</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Par</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Référence</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for movement in movements %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4">
+                            <div class="text-sm text-gray-800 dark:text-white">{{ movement.created_at|date:"d/m/Y" }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ movement.created_at|time:"H:i" }}</div>
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 {% if movement.movement_type == 'entry' %}bg-green-100 dark:bg-green-900/30{% else %}bg-red-100 dark:bg-red-900/30{% endif %} rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-box {% if movement.movement_type == 'entry' %}text-green-500{% else %}text-red-500{% endif %} text-sm"></i>
+                                </div>
+                                <span class="font-medium text-gray-800 dark:text-white">{{ movement.product.name }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {% if movement.movement_type == 'entry' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300{% else %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% endif %}">
+                                <i class="fas {% if movement.movement_type == 'entry' %}fa-arrow-down{% else %}fa-arrow-up{% endif %} mr-1"></i>
+                                {{ movement.get_movement_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <span class="font-bold text-lg {% if movement.movement_type == 'entry' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                                {% if movement.movement_type == 'entry' %}+{% else %}-{% endif %}{{ movement.quantity|floatformat:0 }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                {{ movement.get_reason_display|default:movement.reason }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if movement.location %}
+                            <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                                <i class="fas {% if movement.location.location_type == 'warehouse' %}fa-warehouse text-blue-500{% else %}fa-store text-green-500{% endif %} mr-2"></i>
+                                {{ movement.location.name }}
+                            </div>
+                            {% else %}
+                            <span class="text-sm text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-xs text-gray-500 dark:text-gray-400"></i>
+                                </div>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ movement.user.get_full_name|default:movement.user.username }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if movement.reference %}
+                            <span class="text-sm font-mono text-gray-500 dark:text-gray-400">{{ movement.reference }}</span>
+                            {% else %}
+                            <span class="text-sm text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-5 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-inbox text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+                                <p class="text-gray-500 dark:text-gray-400 text-lg">Aucun mouvement trouvé</p>
+                                <a href="{% url 'stock:entry' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition">
+                                    <i class="fas fa-plus mr-2"></i>Créer une entrée
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if movements.has_other_pages %}
+        <div class="px-5 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Page {{ movements.number }} sur {{ movements.paginator.num_pages }}
+                </p>
+                <div class="flex items-center space-x-2">
+                    {% if movements.has_previous %}
+                    <a href="?page={{ movements.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_type %}&type={{ selected_type }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% endif %}
+
+                    {% for num in movements.paginator.page_range %}
+                        {% if movements.number == num %}
+                        <span class="px-3 py-2 bg-green-500 text-white rounded-lg">{{ num }}</span>
+                        {% elif num > movements.number|add:'-3' and num < movements.number|add:'3' %}
+                        <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if selected_type %}&type={{ selected_type }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}"
+                           class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                            {{ num }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if movements.has_next %}
+                    <a href="?page={{ movements.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_type %}&type={{ selected_type }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

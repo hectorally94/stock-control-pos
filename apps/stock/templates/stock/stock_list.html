@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'stock:dashboard' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-{{ icon }} text-{{ color }}-500 mr-2"></i>{{ title }}
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    {{ low_stock_items|length }} produit{% if low_stock_items|length != 1 %}s{% endif %} concerné{% if low_stock_items|length != 1 %}s{% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% include "partials/export_buttons.html" %}
+            <a href="{% url 'stock:entry' %}" class="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md hover:shadow-lg transition">
+                <i class="fas fa-plus-circle"></i>
+                <span>Nouvelle Entrée</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Banner -->
+    <div class="bg-{{ color }}-50 dark:bg-{{ color }}-900/20 border border-{{ color }}-200 dark:border-{{ color }}-800 rounded-xl p-4">
+        <div class="flex items-center">
+            <i class="fas fa-{{ icon }} text-{{ color }}-500 text-xl mr-3"></i>
+            <div>
+                <h3 class="font-semibold text-{{ color }}-700 dark:text-{{ color }}-300">
+                    {% if color == 'yellow' %}
+                    Ces produits ont un stock inférieur au seuil minimum
+                    {% else %}
+                    Ces produits sont en rupture de stock
+                    {% endif %}
+                </h3>
+                <p class="text-sm text-{{ color }}-600 dark:text-{{ color }}-400">
+                    {% if color == 'yellow' %}
+                    Il est recommandé de passer une commande de réapprovisionnement
+                    {% else %}
+                    Vous ne pouvez plus vendre ces produits tant qu'ils ne sont pas réapprovisionnés
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Catégorie</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacement</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock Actuel</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Seuil Min</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Manquant</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for stock in low_stock_items %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-{{ color }}-100 dark:bg-{{ color }}-900/30 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-box text-{{ color }}-500"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800 dark:text-white">{{ stock.product.name }}</p>
+                                    {% if stock.product.barcode %}
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        <i class="fas fa-barcode mr-1"></i>{{ stock.product.barcode }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                                {{ stock.product.category.name }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if stock.location %}
+                            <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                                <i class="fas {% if stock.location.location_type == 'warehouse' %}fa-warehouse text-blue-500{% else %}fa-store text-green-500{% endif %} mr-2"></i>
+                                {{ stock.location.name }}
+                            </div>
+                            {% else %}
+                            <span class="text-sm text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold {% if stock.quantity == 0 %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% else %}bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300{% endif %}">
+                                {{ stock.quantity|floatformat:0 }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-center text-gray-600 dark:text-gray-400">
+                            {{ stock.product.min_stock_threshold }}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% with diff=stock.product.min_stock_threshold|add:stock.quantity|default:0 %}
+                            <span class="font-semibold text-red-600 dark:text-red-400">
+                                {% if stock.quantity < stock.product.min_stock_threshold %}
+                                -{{ stock.product.min_stock_threshold|add:"-"|add:stock.quantity|floatformat:0 }}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </span>
+                            {% endwith %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <a href="{% url 'products:product_detail' stock.product.pk %}"
+                                   class="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition"
+                                   title="Voir produit">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'stock:entry' %}?product={{ stock.product.pk }}"
+                                   class="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition"
+                                   title="Réapprovisionner">
+                                    <i class="fas fa-plus"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-5 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-check-circle text-green-400 text-5xl mb-4"></i>
+                                <p class="text-gray-500 dark:text-gray-400 text-lg">Aucun produit concerné</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Tous vos stocks sont à niveau</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <a href="{% url 'stock:dashboard' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 hover:shadow-lg transition text-center group">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                <i class="fas fa-chart-line text-blue-500 text-xl"></i>
+            </div>
+            <p class="font-medium text-gray-800 dark:text-white text-sm">Dashboard</p>
+        </a>
+        <a href="{% url 'stock:entry' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 hover:shadow-lg transition text-center group">
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                <i class="fas fa-plus-circle text-green-500 text-xl"></i>
+            </div>
+            <p class="font-medium text-gray-800 dark:text-white text-sm">Entrée Stock</p>
+        </a>
+        <a href="{% url 'stock:movements' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 hover:shadow-lg transition text-center group">
+            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                <i class="fas fa-exchange-alt text-purple-500 text-xl"></i>
+            </div>
+            <p class="font-medium text-gray-800 dark:text-white text-sm">Mouvements</p>
+        </a>
+        <a href="{% url 'products:product_list' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 hover:shadow-lg transition text-center group">
+            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                <i class="fas fa-box text-orange-500 text-xl"></i>
+            </div>
+            <p class="font-medium text-gray-800 dark:text-white text-sm">Produits</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

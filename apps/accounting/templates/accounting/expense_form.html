@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'create' %}Nouvelle Dépense{% else %}Modifier la Dépense{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center space-x-4">
+        <a href="{% if mode == 'edit' %}{% url 'accounting:expense_detail' expense.pk %}{% else %}{% url 'accounting:expense_list' %}{% endif %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+            <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-{% if mode == 'create' %}plus-circle{% else %}edit{% endif %} text-red-500 mr-2"></i>
+                {% if mode == 'create' %}Nouvelle Dépense{% else %}Modifier la Dépense{% endif %}
+            </h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">
+                {% if mode == 'create' %}Enregistrez une nouvelle dépense{% else %}Modifiez les informations{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            <!-- Main Info -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white flex items-center">
+                    <i class="fas fa-info-circle text-red-500 mr-2"></i>Informations principales
+                </h3>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Description <span class="text-red-500">*</span>
+                    </label>
+                    <textarea name="description" rows="2" required
+                              placeholder="Ex: Achat de fournitures de bureau"
+                              class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white resize-none">{% if mode == 'edit' %}{{ expense.description }}{% else %}{{ form_data.description }}{% endif %}</textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Montant (FB) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" name="amount" step="1" min="1" required
+                                   value="{% if mode == 'edit' %}{{ expense.amount|floatformat:0 }}{% else %}{{ form_data.amount }}{% endif %}"
+                                   placeholder="0"
+                                   class="w-full pl-4 pr-12 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">FB</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" name="expense_date" required
+                               value="{% if mode == 'edit' %}{{ expense.expense_date|date:'Y-m-d' }}{% elif form_data.expense_date %}{{ form_data.expense_date }}{% else %}{{ today }}{% endif %}"
+                               class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Catégorie</label>
+                        <select name="category"
+                                class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                            <option value="">-- Sans catégorie --</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.pk }}" {% if mode == 'edit' and expense.expense_category_id == cat.pk %}selected{% elif form_data.category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mode de paiement</label>
+                        <select name="payment_method"
+                                class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                            {% for value, label in payment_methods %}
+                            <option value="{{ value }}" {% if mode == 'edit' and expense.payment_method == value %}selected{% elif form_data.payment_method == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Info -->
+            <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white flex items-center">
+                    <i class="fas fa-file-alt text-purple-500 mr-2"></i>Informations complémentaires
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <i class="fas fa-store text-gray-400 mr-1"></i>Fournisseur
+                        </label>
+                        <input type="text" name="supplier"
+                               value="{% if mode == 'edit' %}{{ expense.supplier|default:'' }}{% else %}{{ form_data.supplier }}{% endif %}"
+                               placeholder="Nom du fournisseur"
+                               class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <i class="fas fa-hashtag text-gray-400 mr-1"></i>Référence / Reçu
+                        </label>
+                        <input type="text" name="reference"
+                               value="{% if mode == 'edit' %}{{ expense.reference|default:'' }}{% else %}{{ form_data.reference }}{% endif %}"
+                               placeholder="Numéro de facture/reçu"
+                               class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Emplacement</label>
+                    <select name="location"
+                            class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white">
+                        <option value="">-- Non spécifié --</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.pk }}" {% if mode == 'edit' and expense.location_id == loc.pk %}selected{% elif form_data.location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+                    <textarea name="notes" rows="2"
+                              placeholder="Notes ou remarques supplémentaires..."
+                              class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-800 dark:text-white resize-none">{% if mode == 'edit' %}{{ expense.notes|default:'' }}{% else %}{{ form_data.notes }}{% endif %}</textarea>
+                </div>
+
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" name="is_recurring" {% if mode == 'edit' and expense.is_recurring %}checked{% elif form_data.is_recurring %}checked{% endif %}
+                           class="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500">
+                    <div>
+                        <span class="text-gray-800 dark:text-white font-medium">Dépense récurrente</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Cochez si c'est une dépense qui revient régulièrement</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <a href="{% if mode == 'edit' %}{% url 'accounting:expense_detail' expense.pk %}{% else %}{% url 'accounting:expense_list' %}{% endif %}"
+                   class="px-6 py-2.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-lg font-medium transition">
+                    Annuler
+                </a>
+                <button type="submit"
+                        class="px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition">
+                    <i class="fas fa-{% if mode == 'create' %}plus{% else %}save{% endif %} mr-2"></i>
+                    {% if mode == 'create' %}Enregistrer{% else %}Modifier{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

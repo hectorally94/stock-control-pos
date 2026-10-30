@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'edit' %}Modifier l'Emplacement{% else %}Nouvel Emplacement{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+            {% if mode == 'edit' %}
+            <i class="fas fa-pen-to-square text-blue-500 mr-2"></i>Modifier l'Emplacement
+            {% else %}
+            <i class="fas fa-location-dot text-blue-500 mr-2"></i>Nouvel Emplacement
+            {% endif %}
+        </h1>
+        <a href="{% if mode == 'edit' %}{% url 'locations:detail' location.pk %}{% else %}{% url 'locations:dashboard' %}{% endif %}"
+           class="inline-flex items-center space-x-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+            <i class="fas fa-arrow-left"></i>
+            <span>Retour</span>
+        </a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-tag mr-1"></i>Nom <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="name" required value="{{ data.name }}"
+                           placeholder="Ex : Boutique Centre-Ville"
+                           class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-barcode mr-1"></i>Code <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="code" required value="{{ data.code }}"
+                           placeholder="Ex : BTQ-CENTRE"
+                           class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Code unique pour cet emplacement.</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-building mr-1"></i>Type <span class="text-red-500">*</span>
+                </label>
+                {% if types %}
+                <select name="type_id" required
+                        class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    <option value="">Sélectionnez un type</option>
+                    {% for t in types %}
+                    <option value="{{ t.id }}" {% if data.type_id == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }} ({{ t.get_behaviour_display }})</option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Type manquant ? <a href="{% url 'locations:type_create' %}" class="text-blue-600 dark:text-blue-400 hover:underline">Ajouter un type</a>.
+                </p>
+                {% else %}
+                <div class="border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+                    Aucun type d'emplacement défini.
+                    <a href="{% url 'locations:type_create' %}" class="font-semibold underline">Créez-en un d'abord</a>.
+                </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-map-marker-alt mr-1"></i>Adresse
+                </label>
+                <textarea name="address" rows="2" placeholder="Adresse de l'emplacement..."
+                          class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none">{{ data.address }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-phone mr-1"></i>Téléphone
+                    </label>
+                    <input type="text" name="phone" value="{{ data.phone }}"
+                           placeholder="+257 ..."
+                           class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-envelope mr-1"></i>Email
+                    </label>
+                    <input type="email" name="email" value="{{ data.email }}"
+                           placeholder="contact@..."
+                           class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-user-tie mr-1"></i>Responsable
+                </label>
+                <select name="manager"
+                        class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    <option value="">Aucun</option>
+                    {% for m in managers %}
+                    <option value="{{ m.id }}" {% if data.manager == m.id|stringformat:'s' %}selected{% endif %}>
+                        {{ m.get_full_name|default:m.username }} ({{ m.get_role_display|default:m.role }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+                <label class="inline-flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="is_main_warehouse" {% if data.is_main_warehouse %}checked{% endif %}
+                           class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Dépôt principal de l'entreprise</span>
+                </label>
+                <label class="inline-flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="is_active" {% if data.is_active %}checked{% endif %}
+                           class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Actif</span>
+                </label>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 rounded-xl font-bold transition shadow-lg hover:shadow-xl">
+                <i class="fas fa-check-circle mr-2"></i>{% if mode == 'edit' %}Enregistrer les modifications{% else %}Créer l'emplacement{% endif %}
+            </button>
+        </form>
+
+        {% if mode == 'edit' %}
+        <!-- Danger zone: delete -->
+        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <form method="post" action="{% url 'locations:delete' location.pk %}"
+                  onsubmit="return confirm('Supprimer définitivement cet emplacement ? Cette action est irréversible.');">
+                {% csrf_token %}
+                <button type="submit" class="w-full inline-flex items-center justify-center space-x-2 border border-red-500 text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white py-3 rounded-lg transition font-medium">
+                    <i class="fas fa-trash"></i>
+                    <span>Supprimer cet emplacement</span>
+                </button>
+            </form>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                La suppression n'est possible que si l'emplacement ne contient aucun stock ni historique. Sinon, décochez « Actif » pour le désactiver.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

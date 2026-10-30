@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ transfer.reference }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'transfers:list' %}" class="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                    <i class="fas fa-truck-fast text-blue-500 mr-3"></i>
+                    {{ transfer.reference }}
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400">Créé le {{ transfer.created_at|date:"d/m/Y à H:i" }}</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold
+                {% if transfer.status == 'draft' %}bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+                {% elif transfer.status == 'pending' %}bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300
+                {% elif transfer.status == 'in_transit' %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300
+                {% elif transfer.status == 'received' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                {% elif transfer.status == 'cancelled' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300
+                {% endif %}">
+                {% if transfer.status == 'draft' %}<i class="fas fa-file-alt mr-1"></i>
+                {% elif transfer.status == 'pending' %}<i class="fas fa-clock mr-1"></i>
+                {% elif transfer.status == 'in_transit' %}<i class="fas fa-truck mr-1"></i>
+                {% elif transfer.status == 'received' %}<i class="fas fa-check-circle mr-1"></i>
+                {% elif transfer.status == 'cancelled' %}<i class="fas fa-times-circle mr-1"></i>
+                {% endif %}
+                {{ transfer.get_status_display }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Transfer Route Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <!-- Source -->
+            <div class="flex-1 text-center">
+                <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center
+                    {% if transfer.source_location.location_type == 'warehouse' %}bg-orange-100 dark:bg-orange-900/30{% else %}bg-green-100 dark:bg-green-900/30{% endif %}">
+                    <i class="fas {% if transfer.source_location.location_type == 'warehouse' %}fa-warehouse text-orange-500{% else %}fa-store text-green-500{% endif %} text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 dark:text-white text-lg">{{ transfer.source_location.name }}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ transfer.source_location.code }}</p>
+                <span class="inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-medium
+                    {% if transfer.source_location.location_type == 'warehouse' %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300{% else %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300{% endif %}">
+                    {{ transfer.source_location.get_location_type_display }}
+                </span>
+            </div>
+
+            <!-- Arrow -->
+            <div class="flex flex-col items-center">
+                <div class="hidden md:flex items-center">
+                    <div class="w-20 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
+                    <i class="fas fa-arrow-right text-2xl text-blue-500 mx-4"></i>
+                    <div class="w-20 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
+                </div>
+                <i class="md:hidden fas fa-arrow-down text-2xl text-blue-500 my-4"></i>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">{{ items.count }} article{{ items.count|pluralize }}</p>
+            </div>
+
+            <!-- Destination -->
+            <div class="flex-1 text-center">
+                <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center
+                    {% if transfer.destination_location.location_type == 'warehouse' %}bg-orange-100 dark:bg-orange-900/30{% else %}bg-green-100 dark:bg-green-900/30{% endif %}">
+                    <i class="fas {% if transfer.destination_location.location_type == 'warehouse' %}fa-warehouse text-orange-500{% else %}fa-store text-green-500{% endif %} text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 dark:text-white text-lg">{{ transfer.destination_location.name }}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ transfer.destination_location.code }}</p>
+                <span class="inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-medium
+                    {% if transfer.destination_location.location_type == 'warehouse' %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300{% else %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300{% endif %}">
+                    {{ transfer.destination_location.get_location_type_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    {% if can_manage_transfers and transfer.status not in 'received,cancelled' %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-bolt text-yellow-500 mr-2"></i>Actions
+        </h2>
+        <div class="flex flex-wrap gap-3">
+            {% if transfer.status == 'draft' or transfer.status == 'pending' %}
+            <form method="post" action="{% url 'transfers:send' transfer.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition font-medium"
+                        onclick="return confirm('Êtes-vous sûr de vouloir envoyer ce transfert ? Le stock sera déduit de l\'emplacement source.')">
+                    <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                </button>
+            </form>
+            {% endif %}
+
+            {% if transfer.status == 'in_transit' %}
+            <button type="button" onclick="document.getElementById('receiveModal').classList.remove('hidden')"
+                    class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium">
+                <i class="fas fa-box-open mr-2"></i>Réceptionner
+            </button>
+            {% endif %}
+
+            {% if transfer.status != 'received' %}
+            <button type="button" onclick="document.getElementById('cancelModal').classList.remove('hidden')"
+                    class="inline-flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition font-medium">
+                <i class="fas fa-times mr-2"></i>Annuler
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transfer Items -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-boxes-stacked text-purple-500 mr-2"></i>Articles du Transfert
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Produit</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Quantité Envoyée</th>
+                        {% if transfer.status == 'received' %}
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Quantité Reçue</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Écart</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for item in items %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-box text-gray-400"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-800 dark:text-white">{{ item.product.name }}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ item.product.sku|default:item.product.barcode|default:"" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <span class="font-bold text-gray-800 dark:text-white">{{ item.quantity|floatformat:"-3" }}</span>
+                            <span class="text-gray-500 dark:text-gray-400">{{ item.product.unit }}</span>
+                        </td>
+                        {% if transfer.status == 'received' %}
+                        <td class="px-5 py-4 text-center">
+                            <span class="font-bold text-gray-800 dark:text-white">{{ item.received_quantity|default:item.quantity|floatformat:"-3" }}</span>
+                            <span class="text-gray-500 dark:text-gray-400">{{ item.product.unit }}</span>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% if item.variance != 0 %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-sm font-medium
+                                {% if item.variance > 0 %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                                {% else %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% endif %}">
+                                {% if item.variance > 0 %}+{% endif %}{{ item.variance|floatformat:"-3" }}
+                            </span>
+                            {% else %}
+                            <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Transfer History -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-history text-gray-500 mr-2"></i>Historique
+        </h2>
+        <div class="space-y-4">
+            <div class="flex items-start">
+                <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-plus text-gray-500"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-gray-800 dark:text-white font-medium">Transfert créé</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Par {{ transfer.created_by.get_full_name|default:transfer.created_by.username }} le {{ transfer.created_at|date:"d/m/Y à H:i" }}
+                    </p>
+                </div>
+            </div>
+
+            {% if transfer.sent_at %}
+            <div class="flex items-start">
+                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-paper-plane text-blue-500"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-gray-800 dark:text-white font-medium">Transfert envoyé</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Par {{ transfer.sent_by.get_full_name|default:transfer.sent_by.username }} le {{ transfer.sent_at|date:"d/m/Y à H:i" }}
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if transfer.received_at %}
+            <div class="flex items-start">
+                <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-box-open text-green-500"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-gray-800 dark:text-white font-medium">Transfert réceptionné</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Par {{ transfer.received_by.get_full_name|default:transfer.received_by.username }} le {{ transfer.received_at|date:"d/m/Y à H:i" }}
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if transfer.cancelled_at %}
+            <div class="flex items-start">
+                <div class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-times text-red-500"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-gray-800 dark:text-white font-medium">Transfert annulé</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Par {{ transfer.cancelled_by.get_full_name|default:transfer.cancelled_by.username }} le {{ transfer.cancelled_at|date:"d/m/Y à H:i" }}
+                    </p>
+                    {% if transfer.cancellation_reason %}
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-1">
+                        <i class="fas fa-quote-left mr-1"></i>{{ transfer.cancellation_reason }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if transfer.notes %}
+    <!-- Notes -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-sticky-note text-yellow-500 mr-2"></i>Notes
+        </h2>
+        <p class="text-gray-700 dark:text-gray-300">{{ transfer.notes }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Receive Modal -->
+{% if can_manage_transfers %}
+<div id="receiveModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <form method="post" action="{% url 'transfers:receive' transfer.pk %}">
+            {% csrf_token %}
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-box-open text-green-500 mr-2"></i>Réceptionner le Transfert
+                </h3>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                    Vérifiez les quantités reçues et modifiez si nécessaire.
+                </p>
+                {% for item in items %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800 dark:text-white">{{ item.product.name }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Envoyé: {{ item.quantity|floatformat:"-3" }} {{ item.product.unit }}</p>
+                    </div>
+                    <div class="w-24">
+                        <input type="number" name="received_qty_{{ item.pk }}" value="{% localize off %}{{ item.quantity|floatformat:"-3" }}{% endlocalize %}" step="0.001" min="0"
+                               class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-center">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                <button type="button" onclick="document.getElementById('receiveModal').classList.add('hidden')"
+                        class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition">
+                    Annuler
+                </button>
+                <button type="submit" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition">
+                    <i class="fas fa-check mr-2"></i>Confirmer Réception
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div id="cancelModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full">
+        <form method="post" action="{% url 'transfers:cancel' transfer.pk %}">
+            {% csrf_token %}
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-times-circle text-red-500 mr-2"></i>Annuler le Transfert
+                </h3>
+            </div>
+            <div class="p-5">
+                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                    Êtes-vous sûr de vouloir annuler ce transfert ?
+                    {% if transfer.status == 'in_transit' %}
+                    <br><span class="text-orange-600 dark:text-orange-400 font-medium">Le stock sera retourné à l'emplacement source.</span>
+                    {% endif %}
+                </p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Raison de l'annulation</label>
+                    <textarea name="reason" rows="3" required
+                              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500"
+                              placeholder="Expliquez pourquoi ce transfert est annulé..."></textarea>
+                </div>
+            </div>
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                <button type="button" onclick="document.getElementById('cancelModal').classList.add('hidden')"
+                        class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition">
+                    Fermer
+                </button>
+                <button type="submit" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition">
+                    <i class="fas fa-times mr-2"></i>Confirmer Annulation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

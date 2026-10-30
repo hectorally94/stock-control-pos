@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Catégories de Dépenses{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'accounting:expense_list' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-tags text-purple-500 mr-2"></i>Catégories de Dépenses
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    Organisez vos dépenses par catégorie
+                </p>
+            </div>
+        </div>
+        <a href="{% url 'accounting:expense_category_create' %}" class="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md hover:shadow-lg transition">
+            <i class="fas fa-plus-circle"></i>
+            <span>Nouvelle Catégorie</span>
+        </a>
+    </div>
+
+    <!-- Categories Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for category in categories %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 hover:shadow-lg transition {% if not category.is_active %}opacity-60{% endif %}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-folder text-purple-500 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white">{{ category.name }}</h3>
+                        {% if not category.is_active %}
+                        <span class="text-xs text-gray-500">(Inactive)</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <a href="{% url 'accounting:expense_category_edit' category.pk %}"
+                   class="p-2 text-gray-400 hover:text-purple-500 transition"
+                   title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+            </div>
+
+            {% if category.description %}
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-3 line-clamp-2">{{ category.description }}</p>
+            {% endif %}
+
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm">
+                <span class="text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-receipt mr-1"></i>{{ category.expense_count }} dépense{% if category.expense_count != 1 %}s{% endif %}
+                </span>
+                <span class="font-semibold text-red-600 dark:text-red-400">
+                    {{ category.total_amount|floatformat:0 }} FB
+                </span>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center">
+            <i class="fas fa-tags text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+            <p class="text-gray-500 dark:text-gray-400 text-lg">Aucune catégorie créée</p>
+            <a href="{% url 'accounting:expense_category_create' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition">
+                <i class="fas fa-plus mr-2"></i>Créer une catégorie
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

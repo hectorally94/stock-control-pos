@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Crédits{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'customers:customer_list' %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-credit-card text-purple-500 mr-2"></i>Gestion des Crédits
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    Suivi des crédits clients et recouvrements
+                </p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% include "partials/export_buttons.html" %}
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total à recouvrer</p>
+                    <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{{ total_pending|floatformat:0 }} <span class="text-sm font-normal">FB</span></p>
+                </div>
+                <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-hand-holding-usd text-red-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Crédits en retard</p>
+                    <p class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ overdue_count }}</p>
+                </div>
+                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <a href="?overdue=true" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 hover:shadow-lg transition group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Voir les retards</p>
+                    <p class="text-lg font-semibold text-purple-600 dark:text-purple-400 mt-1 group-hover:text-purple-700">Filtrer les échéances dépassées</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-filter text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
+        <form method="get" class="flex flex-wrap items-end gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rechercher client</label>
+                <div class="relative">
+                    <input type="text" name="search" value="{{ search }}" placeholder="Nom du client..."
+                           class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-800 dark:text-white">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+            <div class="w-40">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
+                <select name="status" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-800 dark:text-white">
+                    <option value="">Tous</option>
+                    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>En attente</option>
+                    <option value="partial" {% if selected_status == 'partial' %}selected{% endif %}>Partiel</option>
+                    <option value="paid" {% if selected_status == 'paid' %}selected{% endif %}>Payé</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="overdue" value="true" {% if is_overdue_filter %}checked{% endif %}
+                           class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">En retard seulement</span>
+                </label>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button type="submit" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition">
+                    <i class="fas fa-filter mr-2"></i>Filtrer
+                </button>
+                {% if search or selected_status or is_overdue_filter %}
+                <a href="{% url 'customers:credit_list' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-lg transition">
+                    <i class="fas fa-times mr-2"></i>Reset
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Credits Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Montant</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Restant</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Échéance</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Statut</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for credit in credits %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition {% if credit.is_overdue %}bg-red-50 dark:bg-red-900/10{% endif %}">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                                    {{ credit.customer.name|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'customers:customer_detail' credit.customer.pk %}" class="font-medium text-gray-800 dark:text-white hover:text-purple-500 transition">
+                                        {{ credit.customer.name }}
+                                    </a>
+                                    {% if credit.customer.phone %}
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ credit.customer.phone }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="text-sm text-gray-800 dark:text-white">{{ credit.created_at|date:"d/m/Y" }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ credit.created_at|time:"H:i" }}</div>
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="font-semibold text-gray-800 dark:text-white">{{ credit.amount|floatformat:0 }} FB</span>
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="font-bold {% if credit.remaining_amount > 0 %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %}">
+                                {{ credit.remaining_amount|floatformat:0 }} FB
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% if credit.due_date %}
+                            <div class="{% if credit.is_overdue %}text-red-600 dark:text-red-400 font-semibold{% else %}text-gray-600 dark:text-gray-400{% endif %}">
+                                {{ credit.due_date|date:"d/m/Y" }}
+                                {% if credit.is_overdue %}
+                                <div class="text-xs text-red-500 dark:text-red-400">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>En retard
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% if credit.status == 'paid' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                <i class="fas fa-check-circle mr-1"></i>Payé
+                            </span>
+                            {% elif credit.status == 'partial' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
+                                <i class="fas fa-clock mr-1"></i>Partiel
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                                <i class="fas fa-hourglass-half mr-1"></i>En attente
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <a href="{% url 'customers:customer_detail' credit.customer.pk %}"
+                                   class="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition"
+                                   title="Voir client">
+                                    <i class="fas fa-user"></i>
+                                </a>
+                                {% if credit.status != 'paid' %}
+                                <a href="{% url 'customers:record_payment' credit.pk %}"
+                                   class="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition"
+                                   title="Enregistrer paiement">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-5 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-credit-card text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+                                <p class="text-gray-500 dark:text-gray-400 text-lg">Aucun crédit trouvé</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                                    {% if is_overdue_filter %}Aucun crédit en retard{% else %}Les crédits apparaîtront ici{% endif %}
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if credits.has_other_pages %}
+        <div class="px-5 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Page {{ credits.number }} sur {{ credits.paginator.num_pages }}
+                </p>
+                <div class="flex items-center space-x-2">
+                    {% if credits.has_previous %}
+                    <a href="?page={{ credits.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if is_overdue_filter %}&overdue=true{% endif %}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% endif %}
+
+                    {% for num in credits.paginator.page_range %}
+                        {% if credits.number == num %}
+                        <span class="px-3 py-2 bg-purple-500 text-white rounded-lg">{{ num }}</span>
+                        {% elif num > credits.number|add:'-3' and num < credits.number|add:'3' %}
+                        <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if is_overdue_filter %}&overdue=true{% endif %}"
+                           class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                            {{ num }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if credits.has_next %}
+                    <a href="?page={{ credits.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if is_overdue_filter %}&overdue=true{% endif %}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

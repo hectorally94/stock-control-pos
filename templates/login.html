@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Stock Control & POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-primary-500 to-primary-700 dark:from-gray-800 dark:to-gray-900 min-h-screen flex items-center justify-center p-4">
+    <!-- Theme Toggle -->
+    <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)"
+            class="fixed top-4 right-4 p-3 bg-white/20 hover:bg-white/30 rounded-full transition text-white"
+            :title="darkMode ? 'Mode Clair' : 'Mode Sombre'">
+        <i x-show="!darkMode" class="fas fa-moon text-lg"></i>
+        <i x-show="darkMode" class="fas fa-sun text-lg text-yellow-300"></i>
+    </button>
+
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <i class="fas fa-store text-3xl text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Stock Control & POS</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Connectez-vous à votre compte</p>
+        </div>
+
+        {% if form.errors %}
+        <div class="flex items-center p-4 mb-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-lg">
+            <i class="fas fa-exclamation-circle mr-3"></i>
+            <p>Nom d'utilisateur ou mot de passe incorrect.</p>
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-2">
+                    <i class="fas fa-user mr-2"></i>Nom d'utilisateur
+                </label>
+                <input type="text" name="username" required
+                       class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition"
+                       placeholder="Entrez votre nom d'utilisateur">
+            </div>
+
+            <div>
+                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-2">
+                    <i class="fas fa-lock mr-2"></i>Mot de passe
+                </label>
+                <input type="password" name="password" required
+                       class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition"
+                       placeholder="Entrez votre mot de passe">
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-bold py-3 rounded-lg transition shadow-md hover:shadow-lg">
+                <i class="fas fa-sign-in-alt mr-2"></i>Se connecter
+            </button>
+        </form>
+
+        <!-- Functional guide (how the app works) -->
+        <a href="{% url 'functional_documentation' %}" target="_blank" rel="noopener"
+           class="mt-4 w-full flex items-center justify-center space-x-2 border border-primary-500 text-primary-600 dark:text-primary-500 hover:bg-primary-500 hover:text-white font-medium py-3 rounded-lg transition">
+            <i class="fas fa-book-open"></i>
+            <span>Comment fonctionne l'application&nbsp;? — Guide</span>
+        </a>
+
+        <div class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>Version 1.0.0 | © 2025</p>
+        </div>
+
+        <!-- Quick Login - Test Accounts -->
+        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                <i class="fas fa-users mr-1"></i> Comptes de test - Connexion rapide
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="quickLogin('admin', 'admin123')"
+                        class="flex items-center justify-center space-x-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2.5 px-3 rounded-lg transition font-medium"
+                        title="Proprietaire / Admin">
+                    <i class="fas fa-crown"></i>
+                    <span>Patron</span>
+                </button>
+                <button type="button" onclick="quickLogin('manager', 'manager123')"
+                        class="flex items-center justify-center space-x-1 bg-purple-500 hover:bg-purple-600 text-white text-xs py-2.5 px-3 rounded-lg transition font-medium"
+                        title="Gerant de Boutique">
+                    <i class="fas fa-store"></i>
+                    <span>Gerant</span>
+                </button>
+                <button type="button" onclick="quickLogin('stock_manager', 'stock123')"
+                        class="flex items-center justify-center space-x-1 bg-green-500 hover:bg-green-600 text-white text-xs py-2.5 px-3 rounded-lg transition font-medium"
+                        title="Gestionnaire Depot">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Depot</span>
+                </button>
+                <button type="button" onclick="quickLogin('cashier', 'cashier123')"
+                        class="flex items-center justify-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white text-xs py-2.5 px-3 rounded-lg transition font-medium"
+                        title="Caissier">
+                    <i class="fas fa-cash-register"></i>
+                    <span>Caissier</span>
+                </button>
+                <button type="button" onclick="quickLogin('accountant', 'accountant123')"
+                        class="flex items-center justify-center space-x-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs py-2.5 px-3 rounded-lg transition font-medium col-span-2"
+                        title="Comptable">
+                    <i class="fas fa-calculator"></i>
+                    <span>Comptable</span>
+                </button>
+            </div>
+            <div class="mt-3 text-xs text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left">
+                            <th class="pb-1">Role</th>
+                            <th class="pb-1">Login</th>
+                            <th class="pb-1">Mot de passe</th>
+                        </tr>
+                    </thead>
+                    <tbody class="font-mono">
+                        <tr><td>Patron</td><td>admin</td><td>admin123</td></tr>
+                        <tr><td>Gerant</td><td>manager</td><td>manager123</td></tr>
+                        <tr><td>Depot</td><td>stock_manager</td><td>stock123</td></tr>
+                        <tr><td>Caissier</td><td>cashier</td><td>cashier123</td></tr>
+                        <tr><td>Comptable</td><td>accountant</td><td>accountant123</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            function quickLogin(username, password) {
+                document.querySelector('input[name="username"]').value = username;
+                document.querySelector('input[name="password"]').value = password;
+                document.querySelector('form').submit();
+            }
+        </script>
+    </div>
+</body>
+</html>
+

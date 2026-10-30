@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Comptabilité{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>.chart-container { position: relative; height: 260px; width: 100%; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-book text-blue-500 mr-2"></i>Tableau de bord — Comptabilité
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <i class="fas fa-building mr-1"></i>{{ user.enterprise.name }} · Finances
+            </p>
+        </div>
+        <a href="{{ link_reports }}" class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+            Rapports & exports <i class="fas fa-arrow-right text-xs"></i>
+        </a>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% include "dashboards/_kpi.html" with label="Revenus (mois)" value=kpi_revenue|floatformat:0 unit="FB" icon="fa-coins" tint="green" delta="Chiffre d'affaires encaissé" delta_tone="muted" href=link_reports %}
+        {% include "dashboards/_kpi.html" with label="Dépenses (mois)" value=kpi_expenses|floatformat:0 unit="FB" icon="fa-receipt" tint="red" delta="Charges enregistrées" delta_tone="muted" href=link_expenses %}
+        {% with m=kpi_margin|floatformat:1 %}
+        {% include "dashboards/_kpi.html" with label="Bénéfice (marge)" value=kpi_profit|floatformat:0 unit="FB" icon="fa-arrow-trend-up" tint="blue" delta="Marge "|add:m|add:" %" delta_tone="muted" %}
+        {% endwith %}
+        {% include "dashboards/_kpi.html" with label="Crédits clients" value=kpi_credit|floatformat:0 unit="FB" icon="fa-hand-holding-dollar" tint="amber" delta=kpi_credit_customers|stringformat:"s"|add:" clients débiteurs" delta_tone="muted" href=link_credits %}
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="font-bold text-gray-800 dark:text-white">Revenus vs Dépenses</h3>
+            <p class="text-xs text-gray-400 mb-3">6 derniers mois (FB)</p>
+            <div class="chart-container"><canvas id="revExpChart"></canvas></div>
+        </div>
+        <!-- Expenses by category -->
+        <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="font-bold text-gray-800 dark:text-white">Dépenses par catégorie</h3>
+            <p class="text-xs text-gray-400 mb-3">Ce mois</p>
+            {% if cat_rows %}
+            <div class="chart-container" style="height:170px;"><canvas id="catChart"></canvas></div>
+            <div class="mt-4 space-y-1">
+                {% for name, amount, cid in cat_rows %}
+                <a {% if cid %}href="{{ expenses_base }}?category={{ cid }}&date=month"{% else %}href="{{ link_expenses }}"{% endif %} class="flex items-center justify-between text-sm py-1 -mx-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition group" title="Voir les dépenses « {{ name }} »">
+                    <span class="flex items-center gap-2 text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate"><span class="w-2.5 h-2.5 rounded-sm cat-dot" data-i="{{ forloop.counter0 }}"></span>{{ name }}</span>
+                    <span class="font-semibold text-gray-800 dark:text-white" style="font-variant-numeric: tabular-nums;">{{ amount|floatformat:0 }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-400 text-center py-10">Aucune dépense ce mois-ci.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sessions to reconcile -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+        <div class="flex items-center justify-between mb-1">
+            <h3 class="font-bold text-gray-800 dark:text-white">Sessions de caisse à rapprocher</h3>
+            <a href="{{ link_sessions }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Toutes les sessions</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                        <th class="py-2 pr-3 font-semibold">Date</th>
+                        <th class="py-2 pr-3 font-semibold">Caissier</th>
+                        <th class="py-2 pr-3 font-semibold">Emplacement</th>
+                        <th class="py-2 pr-3 font-semibold text-right">Attendu</th>
+                        <th class="py-2 pl-3 font-semibold text-right">Écart</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for s in sessions %}
+                    <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition" onclick="window.location='{% url 'accounting:cash_session_detail' s.pk %}'" title="Détail de la session">
+                        <td class="py-2.5 pr-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ s.closed_at|date:"d/m/Y"|default:"—" }}</td>
+                        <td class="py-2.5 pr-3 text-gray-700 dark:text-gray-300">{{ s.user.get_full_name|default:s.user.username }}</td>
+                        <td class="py-2.5 pr-3 text-gray-500 dark:text-gray-400">{{ s.location.name|default:"—" }}</td>
+                        <td class="py-2.5 pr-3 text-right text-gray-700 dark:text-gray-300" style="font-variant-numeric: tabular-nums;">{{ s.expected_balance|default:0|floatformat:0 }} FB</td>
+                        <td class="py-2.5 pl-3 text-right font-bold" style="font-variant-numeric: tabular-nums;">
+                            {% if s.difference and s.difference != 0 %}
+                            <span class="{% if s.difference < 0 %}text-red-600 dark:text-red-400{% else %}text-amber-600 dark:text-amber-400{% endif %}">{{ s.difference|floatformat:0 }} FB</span>
+                            {% else %}
+                            <span class="text-green-600 dark:text-green-400">0 FB</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="py-8 text-center text-gray-400">Aucune session fermée à afficher.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{ rev_exp_labels|json_script:"re-labels" }}
+{{ rev_series|json_script:"re-rev" }}
+{{ exp_series|json_script:"re-exp" }}
+{{ cat_labels|json_script:"cat-labels" }}
+{{ cat_data|json_script:"cat-data" }}
+{{ rev_exp_periods|json_script:"re-periods" }}
+<span id="sales-base" data-url="{{ sales_base }}"></span>
+<span id="expenses-base" data-url="{{ expenses_base }}"></span>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const dark = document.documentElement.classList.contains('dark');
+    const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
+    const tick = dark ? '#9ca3af' : '#6b7280';
+    const palette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
+
+    const labels = JSON.parse(document.getElementById('re-labels').textContent);
+    const rev = JSON.parse(document.getElementById('re-rev').textContent);
+    const exp = JSON.parse(document.getElementById('re-exp').textContent);
+    const periods = JSON.parse(document.getElementById('re-periods').textContent);
+    const salesBase = document.getElementById('sales-base').dataset.url;
+    const expensesBase = document.getElementById('expenses-base').dataset.url;
+    const reCanvas = document.getElementById('revExpChart');
+    reCanvas.style.cursor = 'pointer';
+    new Chart(reCanvas, {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Revenus', data: rev, backgroundColor: '#22c55e', hoverBackgroundColor: '#16a34a', borderRadius: 5, maxBarThickness: 22 },
+            { label: 'Dépenses', data: exp, backgroundColor: '#ef4444', hoverBackgroundColor: '#dc2626', borderRadius: 5, maxBarThickness: 22 },
+        ]},
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: tick, boxWidth: 12, usePointStyle: true } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
+                x: { grid: { display: false }, ticks: { color: tick } }
+            },
+            onClick: (e, els) => {
+                if (!els.length) return;
+                const { datasetIndex, index } = els[0];
+                const p = periods[index];
+                if (!p) return;
+                // Revenus bar -> filtered sales; Dépenses bar -> filtered expenses
+                const base = datasetIndex === 0 ? salesBase : expensesBase;
+                window.location = `${base}?start=${p.start}&end=${p.end}`;
+            }
+        }
+    });
+
+    const catEl = document.getElementById('catChart');
+    if (catEl) {
+        const catLabels = JSON.parse(document.getElementById('cat-labels').textContent);
+        const catData = JSON.parse(document.getElementById('cat-data').textContent);
+        new Chart(catEl, {
+            type: 'doughnut',
+            data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: palette, borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false } } }
+        });
+        document.querySelectorAll('.cat-dot').forEach(el => {
+            el.style.backgroundColor = palette[(+el.dataset.i) % palette.length];
+        });
+    }
+})();
+</script>
+{% endblock %}

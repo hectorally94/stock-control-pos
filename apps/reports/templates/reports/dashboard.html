@@ -1,0 +1,812 @@
+{% extends "base.html" %}
+
+{% block title %}Rapports - Tableau de Bord{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .chart-container-small {
+        position: relative;
+        height: 250px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-chart-line text-purple-500 mr-2"></i>Tableau de Bord - Rapports
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <i class="fas fa-calendar mr-1"></i>Période: {{ start_date }} au {{ end_date }}
+            </p>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'reports:export_sales' %}?start_date={{ start_date }}&end_date={{ end_date }}"
+               class="inline-flex items-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition text-sm">
+                <i class="fas fa-file-excel"></i>
+                <span>Ventes</span>
+            </a>
+            <a href="{% url 'reports:export_inventory' %}"
+               class="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition text-sm">
+                <i class="fas fa-file-excel"></i>
+                <span>Stock</span>
+            </a>
+            <a href="{% url 'reports:export_expenses' %}?start_date={{ start_date }}&end_date={{ end_date }}"
+               class="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition text-sm">
+                <i class="fas fa-file-excel"></i>
+                <span>Dépenses</span>
+            </a>
+            <a href="{% url 'reports:export_customers' %}"
+               class="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition text-sm">
+                <i class="fas fa-file-excel"></i>
+                <span>Clients</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Today's Sales -->
+        <a href="{% url 'pos:sales_list' %}?date=today" title="Voir les ventes du jour"
+           class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-blue-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Ventes Aujourd'hui</span>
+                <span class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-shopping-cart text-blue-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {{ today_sales.total|default:0|floatformat:0 }} FB
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span><i class="fas fa-receipt mr-1"></i>{{ today_sales.count|default:0 }} transactions</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-blue-500"></i>
+            </p>
+        </a>
+
+        <!-- Monthly Revenue -->
+        <a href="{% url 'pos:sales_list' %}?date=month" title="Voir les ventes du mois"
+           class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-green-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Chiffre d'Affaires (Mois)</span>
+                <span class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-coins text-green-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-green-600 dark:text-green-400">
+                {{ month_sales.total|default:0|floatformat:0 }} FB
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span>{{ month_sales.count|default:0 }} ventes ce mois</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-green-500"></i>
+            </p>
+        </a>
+
+        <!-- Monthly Expenses -->
+        <a href="{% url 'accounting:expense_list' %}?date=month" title="Voir les dépenses du mois"
+           class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-red-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Dépenses (Mois)</span>
+                <span class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-arrow-down text-red-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-red-600 dark:text-red-400">
+                {{ month_expenses.total|default:0|floatformat:0 }} FB
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span>Ce mois</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-red-500"></i>
+            </p>
+        </a>
+
+        <!-- Net Profit -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-purple-500">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Bénéfice Net</span>
+                <span class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-pie text-purple-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold {% if profit >= 0 %}text-purple-600 dark:text-purple-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                {{ profit|floatformat:0 }} FB
+            </p>
+            <p class="text-xs {% if profit >= 0 %}text-green-500{% else %}text-red-500{% endif %} mt-1">
+                <i class="fas {% if profit >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %} mr-1"></i>
+                {% if profit >= 0 %}Positif{% else %}Négatif{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Per-store report exports -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6" x-data="{ loc: '' }">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                <i class="fas fa-store text-indigo-500 mr-2"></i>Rapports par Emplacement
+            </h3>
+            <select x-model="loc"
+                    class="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-white text-sm">
+                <option value="">🌍 Tous les emplacements</option>
+                {% for loc in report_locations %}
+                <option value="{{ loc.pk }}">{% if loc.location_type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 {% if user.role in 'admin,owner,manager' %}lg:grid-cols-3{% endif %} gap-4">
+            {% if user.role in 'admin,owner,manager' %}
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-green-500">
+                <p class="font-semibold text-gray-800 dark:text-white mb-1"><i class="fas fa-exchange-alt text-green-500 mr-2"></i>Mouvements de Stock</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Entrées et sorties de l'emplacement choisi</p>
+                <div class="flex gap-2">
+                    <a :href="'{% url 'stock:movements' %}?export=xlsx' + (loc ? '&location=' + loc : '')"
+                       class="inline-flex items-center px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">
+                        <i class="fas fa-file-excel mr-1.5"></i>Excel
+                    </a>
+                    <a :href="'{% url 'stock:movements' %}?export=pdf' + (loc ? '&location=' + loc : '')" target="_blank"
+                       class="inline-flex items-center px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
+                        <i class="fas fa-file-pdf mr-1.5"></i>PDF
+                    </a>
+                    <a :href="'{% url 'stock:movements' %}' + (loc ? '?location=' + loc : '')"
+                       class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm">
+                        <i class="fas fa-eye mr-1.5"></i>Voir
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-blue-500">
+                <p class="font-semibold text-gray-800 dark:text-white mb-1"><i class="fas fa-receipt text-blue-500 mr-2"></i>Ventes ({{ start_date }} → {{ end_date }})</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Rapport complet: résumé, ventes, articles</p>
+                <div class="flex gap-2">
+                    <a :href="'{% url 'reports:export_sales' %}?start_date={{ start_date }}&end_date={{ end_date }}' + (loc ? '&location=' + loc : '')"
+                       class="inline-flex items-center px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">
+                        <i class="fas fa-file-excel mr-1.5"></i>Excel
+                    </a>
+                    <a :href="'{% url 'pos:sales_list' %}?date=month' + (loc ? '&location=' + loc : '')"
+                       class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm">
+                        <i class="fas fa-eye mr-1.5"></i>Voir
+                    </a>
+                </div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-purple-500">
+                <p class="font-semibold text-gray-800 dark:text-white mb-1"><i class="fas fa-boxes-stacked text-purple-500 mr-2"></i>Inventaire</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Stock par produit + détail par emplacement</p>
+                <div class="flex gap-2">
+                    <a :href="'{% url 'reports:export_inventory' %}' + (loc ? '?location=' + loc : '')"
+                       class="inline-flex items-center px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">
+                        <i class="fas fa-file-excel mr-1.5"></i>Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credit tracking: vendu vs encaissé vs crédit (mois) -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                <i class="fas fa-hand-holding-usd text-purple-500 mr-2"></i>Suivi des Crédits
+            </h3>
+            <a href="{% url 'customers:credit_list' %}"
+               class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition font-medium text-sm">
+                <i class="fas fa-credit-card mr-2"></i>Gérer les Crédits
+            </a>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="{% url 'pos:sales_list' %}?date=month" title="Voir les ventes du mois"
+               class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-green-500 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Encaissé (Mois)</p>
+                <p class="text-xl font-bold text-green-600 dark:text-green-400 mt-1">{{ month_collected|floatformat:0 }} FB</p>
+                <p class="text-xs text-gray-400 mt-1">Ventes payées + remboursements</p>
+            </a>
+            <a href="{% url 'pos:sales_list' %}?date=month&payment=credit" title="Voir les ventes à crédit du mois"
+               class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-orange-500 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Crédit Donné (Mois)</p>
+                <p class="text-xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ month_credit_given|floatformat:0 }} FB</p>
+                <p class="text-xs text-gray-400 mt-1">Ventes à crédit du mois</p>
+            </a>
+            <a href="{% url 'customers:credit_list' %}" title="Voir les crédits et paiements"
+               class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-blue-500 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Remboursements (Mois)</p>
+                <p class="text-xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ month_repayments|floatformat:0 }} FB</p>
+                <p class="text-xs text-gray-400 mt-1">Paiements de crédits reçus</p>
+            </a>
+            <a href="{% url 'customers:credit_list' %}" title="Voir les clients qui doivent"
+               class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-l-4 border-red-500 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Crédit en Cours (Total)</p>
+                <p class="text-xl font-bold text-red-600 dark:text-red-400 mt-1">{{ credit_outstanding|floatformat:0 }} FB</p>
+                <p class="text-xs {% if credit_debtors > 0 %}text-red-500 font-medium{% else %}text-gray-400{% endif %} mt-1">
+                    {{ credit_debtors }} client{{ credit_debtors|pluralize }} concerné{{ credit_debtors|pluralize }}
+                </p>
+            </a>
+        </div>
+    </div>
+
+    <!-- Charts Row 1: Daily Sales & Monthly Trends -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Daily Sales Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-chart-area text-blue-500 mr-2"></i>Ventes des 7 Derniers Jours
+            </h3>
+            <div class="chart-container">
+                <canvas id="dailySalesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Monthly Sales vs Expenses -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-chart-bar text-green-500 mr-2"></i>Ventes vs Dépenses (6 Mois)
+            </h3>
+            <div class="chart-container">
+                <canvas id="monthlyTrendsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2: Category & Payment Methods -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Sales by Category -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-tags text-orange-500 mr-2"></i>Ventes par Catégorie (Top 5)
+            </h3>
+            <div class="chart-container-small">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Payment Methods Distribution -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-credit-card text-purple-500 mr-2"></i>Répartition par Mode de Paiement
+            </h3>
+            <div class="chart-container-small">
+                <canvas id="paymentChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 3: Hourly Pattern & Top Products -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Hourly Sales Pattern -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-clock text-cyan-500 mr-2"></i>Ventes par Heure (Aujourd'hui)
+            </h3>
+            <div class="chart-container-small">
+                <canvas id="hourlyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Selling Products -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-trophy text-yellow-500 mr-2"></i>Produits les Plus Vendus (Ce Mois)
+            </h3>
+            <div class="overflow-x-auto max-h-[280px] overflow-y-auto">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-300">#</th>
+                            <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-300">Produit</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-600 dark:text-gray-300">Qté</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-600 dark:text-gray-300">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                        {% for product in top_products %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td class="py-2 px-3">
+                                {% if forloop.counter <= 3 %}
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full
+                                    {% if forloop.counter == 1 %}bg-yellow-100 text-yellow-600
+                                    {% elif forloop.counter == 2 %}bg-gray-100 text-gray-600
+                                    {% else %}bg-orange-100 text-orange-600{% endif %} text-xs font-bold">
+                                    {{ forloop.counter }}
+                                </span>
+                                {% else %}
+                                <span class="text-gray-500">{{ forloop.counter }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-2 px-3">
+                                {% if user.role in 'admin,owner,manager,warehouse_manager,boutique_manager,stock_manager' %}
+                                <a href="{% url 'products:product_detail' product.product__id %}" title="Voir le produit"
+                                   class="text-gray-800 dark:text-white font-medium hover:text-blue-600 dark:hover:text-blue-400 transition">{{ product.product__name|truncatechars:25 }}</a>
+                                {% else %}
+                                <span class="text-gray-800 dark:text-white font-medium">{{ product.product__name|truncatechars:25 }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{{ product.quantity }}</td>
+                            <td class="py-2 px-3 text-right font-medium text-green-600 dark:text-green-400">{{ product.revenue|floatformat:0 }} FB</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="py-8 text-center text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-inbox text-3xl mb-2"></i>
+                                <p>Aucune vente ce mois</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Status by Location -->
+    {% if stock_status %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-warehouse text-indigo-500 mr-2"></i>État du Stock par Emplacement
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {% for loc in stock_status %}
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-2 border-gray-100 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600 transition">
+                <a href="{% url 'locations:detail' loc.id %}?next={{ request.get_full_path|urlencode }}"
+                   class="flex items-center justify-between mb-3 group" title="Voir le détail de cet emplacement">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition
+                            {% if loc.type == 'warehouse' %}bg-blue-100 dark:bg-blue-900/30{% else %}bg-green-100 dark:bg-green-900/30{% endif %}">
+                            <i class="fas {% if loc.type == 'warehouse' %}fa-warehouse text-blue-500{% else %}fa-store text-green-500{% endif %}"></i>
+                        </span>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 dark:text-white text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">{{ loc.name }}</h4>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                {% if loc.type == 'warehouse' %}Dépôt{% else %}Boutique{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <i class="fas fa-arrow-right text-blue-500 opacity-0 group-hover:opacity-100 transition"></i>
+                </a>
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <a href="{% url 'locations:stock' loc.id %}" title="Voir l'inventaire de cet emplacement"
+                       class="bg-white dark:bg-gray-800 rounded-lg p-2 hover:ring-2 hover:ring-blue-400 transition cursor-pointer">
+                        <p class="text-lg font-bold text-gray-800 dark:text-white">{{ loc.total|floatformat:0 }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Total Items</p>
+                    </a>
+                    <a href="{% url 'locations:stock' loc.id %}?status=alert" title="Voir les produits en alerte"
+                       class="bg-white dark:bg-gray-800 rounded-lg p-2 hover:ring-2 {% if loc.low > 0 %}hover:ring-red-400{% else %}hover:ring-green-400{% endif %} transition cursor-pointer">
+                        <p class="text-lg font-bold {% if loc.low > 0 %}text-red-500{% else %}text-green-500{% endif %}">{{ loc.low }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Stock Faible</p>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-bolt text-yellow-500 mr-2"></i>Actions Rapides
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="{% url 'pos:cashier' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-5 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-center">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                    <i class="fas fa-cash-register text-xl text-blue-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Nouvelle Vente</div>
+            </a>
+
+            <a href="{% url 'stock:dashboard' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-5 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition text-center">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                    <i class="fas fa-boxes-stacked text-xl text-green-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Gérer Stock</div>
+            </a>
+
+            <a href="{% url 'transfers:create' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-5 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition text-center">
+                <div class="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                    <i class="fas fa-truck-fast text-xl text-cyan-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Nouveau Transfert</div>
+            </a>
+
+            <a href="/admin/"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-5 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
+                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                    <i class="fas fa-cog text-xl text-purple-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Administration</div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for dark mode
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const textColor = isDarkMode ? '#e5e7eb' : '#374151';
+    const gridColor = isDarkMode ? '#374151' : '#e5e7eb';
+
+    // Common chart options
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = gridColor;
+
+    // URLs + ids used to make chart elements clickable (drill-down)
+    const SALES_URL = "{% url 'pos:sales_list' %}";
+    const EXPENSES_URL = "{% url 'accounting:expense_list' %}";
+    const IN_STOCK_URL = "{% url 'stock:in_stock' %}";
+    const dailyDates = {{ daily_dates|safe }};
+    const monthlyRanges = {{ monthly_ranges|safe }};
+    const categoryIds = {{ category_ids|safe }};
+    const paymentCodes = {{ payment_codes|safe }};
+
+    function pointerOnHover(event, elements) {
+        event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+    }
+
+    // 1. Daily Sales Line Chart
+    const dailyCtx = document.getElementById('dailySalesChart').getContext('2d');
+    new Chart(dailyCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_labels|safe }},
+            datasets: [{
+                label: 'Ventes (FB)',
+                data: {{ daily_data|safe }},
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: pointerOnHover,
+            onClick: function(event, elements) {
+                if (!elements.length) return;
+                window.location.href = SALES_URL + '?date=' + dailyDates[elements[0].index];
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                    titleColor: isDarkMode ? '#fff' : '#111827',
+                    bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                    borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toLocaleString() + ' FB';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString() + ' FB';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Monthly Trends Bar Chart (Sales vs Expenses)
+    const monthlyCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
+    new Chart(monthlyCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ monthly_labels|safe }},
+            datasets: [{
+                label: 'Ventes',
+                data: {{ monthly_sales|safe }},
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: '#22c55e',
+                borderWidth: 1,
+                borderRadius: 4
+            }, {
+                label: 'Dépenses',
+                data: {{ monthly_expenses|safe }},
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                borderColor: '#ef4444',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: pointerOnHover,
+            onClick: function(event, elements) {
+                if (!elements.length) return;
+                const el = elements[0];
+                const range = monthlyRanges[el.index];
+                const base = el.datasetIndex === 0 ? SALES_URL : EXPENSES_URL;
+                window.location.href = base + '?start=' + range.start + '&end=' + range.end;
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                    titleColor: isDarkMode ? '#fff' : '#111827',
+                    bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                    borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' FB';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. Category Doughnut Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    const categoryData = {{ category_data|safe }};
+    const categoryLabels = {{ category_labels|safe }};
+
+    if (categoryData.length > 0 && categoryData.some(v => v > 0)) {
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryData,
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(249, 115, 22, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(236, 72, 153, 0.8)'
+                    ],
+                    borderColor: isDarkMode ? '#1f2937' : '#fff',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                onHover: pointerOnHover,
+                onClick: function(event, elements) {
+                    if (!elements.length) return;
+                    const catId = categoryIds[elements[0].index];
+                    window.location.href = catId ? SALES_URL + '?date=month&category=' + catId : SALES_URL + '?date=month';
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                        titleColor: isDarkMode ? '#fff' : '#111827',
+                        bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.parsed.toLocaleString() + ' FB (' + percentage + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    } else {
+        document.getElementById('categoryChart').parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400"><div class="text-center"><i class="fas fa-chart-pie text-4xl mb-2 opacity-30"></i><p>Aucune donnée disponible</p></div></div>';
+    }
+
+    // 4. Payment Methods Pie Chart
+    const paymentCtx = document.getElementById('paymentChart').getContext('2d');
+    const paymentData = {{ payment_data|safe }};
+    const paymentLabels = {{ payment_labels|safe }};
+
+    if (paymentData.length > 0 && paymentData.some(v => v > 0)) {
+        new Chart(paymentCtx, {
+            type: 'pie',
+            data: {
+                labels: paymentLabels,
+                datasets: [{
+                    data: paymentData,
+                    backgroundColor: [
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(249, 115, 22, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(107, 114, 128, 0.8)'
+                    ],
+                    borderColor: isDarkMode ? '#1f2937' : '#fff',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                onHover: pointerOnHover,
+                onClick: function(event, elements) {
+                    if (!elements.length) return;
+                    window.location.href = SALES_URL + '?date=month&payment=' + encodeURIComponent(paymentCodes[elements[0].index]);
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                        titleColor: isDarkMode ? '#fff' : '#111827',
+                        bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.parsed.toLocaleString() + ' FB (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('paymentChart').parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400"><div class="text-center"><i class="fas fa-credit-card text-4xl mb-2 opacity-30"></i><p>Aucune donnée disponible</p></div></div>';
+    }
+
+    // 5. Hourly Sales Bar Chart
+    const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+    new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ hourly_labels|safe }},
+            datasets: [{
+                label: 'Ventes (FB)',
+                data: {{ hourly_data|safe }},
+                backgroundColor: 'rgba(6, 182, 212, 0.7)',
+                borderColor: '#06b6d4',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: pointerOnHover,
+            onClick: function(event, elements) {
+                if (!elements.length) return;
+                window.location.href = SALES_URL + '?date=today';
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                    titleColor: isDarkMode ? '#fff' : '#111827',
+                    bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                    borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toLocaleString() + ' FB';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Handle dark mode toggle
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'class') {
+                // Reload page to update charts with new theme
+                location.reload();
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+    });
+});
+</script>
+{% endblock %}

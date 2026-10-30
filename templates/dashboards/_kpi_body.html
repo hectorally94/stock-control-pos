@@ -1,0 +1,17 @@
+{% comment %}Inner body of a KPI card; `chip` (icon classes) is provided by _kpi.html.{% endcomment %}
+<{% if href %}a href="{{ href }}"{% else %}div{% endif %} class="block bg-white dark:bg-gray-800 rounded-2xl shadow-sm {% if href %}hover:shadow-md hover:-translate-y-0.5{% endif %} border border-gray-100 dark:border-gray-700 p-5 transition">
+    <div class="flex items-start justify-between gap-3">
+        <span class="text-sm font-semibold text-gray-500 dark:text-gray-400">{{ label }}</span>
+        <span class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 {{ chip }}">
+            <i class="fas {{ icon }}"></i>
+        </span>
+    </div>
+    <div class="mt-3 text-2xl font-extrabold text-gray-800 dark:text-white" style="font-variant-numeric: tabular-nums;">
+        {{ value }}{% if unit %} <span class="text-sm font-semibold text-gray-400">{{ unit }}</span>{% endif %}
+    </div>
+    {% if delta %}
+    <div class="mt-1 text-xs font-semibold {% if delta_tone == 'up' %}text-green-600 dark:text-green-400{% elif delta_tone == 'down' %}text-red-600 dark:text-red-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">
+        {{ delta }}
+    </div>
+    {% endif %}
+</{% if href %}a{% else %}div{% endif %}>

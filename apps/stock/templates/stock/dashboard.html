@@ -1,0 +1,745 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion de Stock{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .chart-container {
+        position: relative;
+        height: 280px;
+        width: 100%;
+    }
+    .chart-container-small {
+        position: relative;
+        height: 220px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-boxes-stacked text-green-500 mr-2"></i>Gestion de Stock
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Vue d'ensemble et mouvements de stock
+            </p>
+        </div>
+        <a href="{% url 'stock:entry' %}" class="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md hover:shadow-lg transition">
+            <i class="fas fa-plus-circle"></i>
+            <span>Nouvelle Entrée</span>
+        </a>
+    </div>
+
+    <!-- Stats Cards - Clickable -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Products -->
+        <a href="{% url 'stock:in_stock' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-blue-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Produits en Stock</span>
+                <span class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-box text-blue-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ total_products }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span>{{ total_quantity|floatformat:0 }} unités totales</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-blue-500"></i>
+            </p>
+        </a>
+
+        <!-- Low Stock Alerts -->
+        <a href="{% url 'stock:low_stock' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-yellow-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Stock Faible</span>
+                <span class="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ low_stock_count }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span>Produits à réapprovisionner</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-yellow-500"></i>
+            </p>
+        </a>
+
+        <!-- Out of Stock -->
+        <a href="{% url 'stock:out_of_stock' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-red-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Rupture de Stock</span>
+                <span class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-times-circle text-red-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ out_of_stock }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span>Produits épuisés</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-red-500"></i>
+            </p>
+        </a>
+
+        <!-- Movements Today -->
+        <a href="{% url 'stock:movements' %}" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 border-l-4 border-green-500 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Mouvements Aujourd'hui</span>
+                <span class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-exchange-alt text-green-500"></i>
+                </span>
+            </div>
+            <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ movements_today }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                <span>Entrées et sorties</span>
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition text-green-500"></i>
+            </p>
+        </a>
+    </div>
+
+    <!-- Monthly Summary Cards - Clickable -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <a href="{% url 'stock:movements' %}?type=entry&date=month"
+           class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl hover:scale-[1.01] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-white/80">Entrées ce Mois</p>
+                    <p class="text-3xl font-bold mt-1">{{ month_entries|floatformat:0 }}</p>
+                    <p class="text-sm text-white/70 mt-1 flex items-center">
+                        <i class="fas fa-arrow-down mr-1"></i>Unités entrées
+                        <i class="fas fa-arrow-right ml-3 opacity-0 group-hover:opacity-100 transition"></i>
+                    </p>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-arrow-down text-3xl"></i>
+                </div>
+            </div>
+        </a>
+
+        <a href="{% url 'stock:movements' %}?type=exit&date=month"
+           class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl hover:scale-[1.01] transition-all cursor-pointer group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-white/80">Sorties ce Mois</p>
+                    <p class="text-3xl font-bold mt-1">{{ month_exits|floatformat:0 }}</p>
+                    <p class="text-sm text-white/70 mt-1 flex items-center">
+                        <i class="fas fa-arrow-up mr-1"></i>Unités sorties
+                        <i class="fas fa-arrow-right ml-3 opacity-0 group-hover:opacity-100 transition"></i>
+                    </p>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
+                    <i class="fas fa-arrow-up text-3xl"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Charts Row 1: Movements & Category Distribution -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Stock Movements Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-chart-line text-blue-500 mr-2"></i>Mouvements de Stock (14 jours)
+            </h3>
+            <div class="chart-container">
+                <canvas id="movementsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Stock by Category -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-tags text-purple-500 mr-2"></i>Stock par Catégorie
+            </h3>
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2: Reasons & Top Products -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Movement Reasons -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-pie-chart text-orange-500 mr-2"></i>Types de Mouvements (Ce mois)
+            </h3>
+            <div class="chart-container-small">
+                <canvas id="reasonsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Products by Stock -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-trophy text-yellow-500 mr-2"></i>Top 10 Produits en Stock
+            </h3>
+            <div class="chart-container-small">
+                <canvas id="topProductsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock by Location -->
+    {% if location_stock %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-warehouse text-indigo-500 mr-2"></i>Stock par Emplacement
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {% for loc in location_stock %}
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-2 border-gray-100 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600 transition">
+                <a href="{% url 'locations:detail' loc.id %}?next={{ request.get_full_path|urlencode }}"
+                   class="flex items-center space-x-3 mb-3 group" title="Voir le détail de cet emplacement">
+                    <span class="w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition
+                        {% if loc.type == 'warehouse' %}bg-blue-100 dark:bg-blue-900/30{% else %}bg-green-100 dark:bg-green-900/30{% endif %}">
+                        <i class="fas {% if loc.type == 'warehouse' %}fa-warehouse text-blue-500{% else %}fa-store text-green-500{% endif %}"></i>
+                    </span>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-800 dark:text-white text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">{{ loc.name }}</h4>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                            {% if loc.type == 'warehouse' %}Dépôt{% else %}Boutique{% endif %}
+                        </span>
+                    </div>
+                    <i class="fas fa-arrow-right text-blue-500 opacity-0 group-hover:opacity-100 transition"></i>
+                </a>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <a href="{% url 'locations:stock' loc.id %}" title="Voir l'inventaire de cet emplacement"
+                       class="bg-white dark:bg-gray-800 rounded-lg p-2 hover:ring-2 hover:ring-blue-400 transition cursor-pointer">
+                        <p class="text-lg font-bold text-gray-800 dark:text-white">{{ loc.total|floatformat:0 }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Unités</p>
+                    </a>
+                    <a href="{% url 'locations:stock' loc.id %}" title="Voir les produits de cet emplacement"
+                       class="bg-white dark:bg-gray-800 rounded-lg p-2 hover:ring-2 hover:ring-blue-400 transition cursor-pointer">
+                        <p class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ loc.products }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Produits</p>
+                    </a>
+                    <a href="{% url 'locations:stock' loc.id %}?status=alert" title="Voir les alertes de cet emplacement"
+                       class="bg-white dark:bg-gray-800 rounded-lg p-2 hover:ring-2 {% if loc.low > 0 %}hover:ring-red-400{% else %}hover:ring-green-400{% endif %} transition cursor-pointer">
+                        <p class="text-lg font-bold {% if loc.low > 0 %}text-red-500{% else %}text-green-500{% endif %}">{{ loc.low }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Alertes</p>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Out of Stock (Rupture) -->
+    {% if out_of_stock_items %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700 bg-red-100 dark:bg-red-900/30 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-red-700 dark:text-red-300">
+                <i class="fas fa-times-circle mr-2"></i>Rupture de Stock — produits épuisés ({{ out_of_stock_items|length }})
+            </h2>
+            <span class="text-xs text-red-600 dark:text-red-300">À réapprovisionner en priorité</span>
+        </div>
+        <div class="overflow-x-auto max-h-80">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50 sticky top-0">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacement</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for stock in out_of_stock_items %}
+                    <tr class="hover:bg-red-50 dark:hover:bg-red-900/10 transition">
+                        <td class="px-5 py-3 text-gray-800 dark:text-white font-medium">{{ stock.product.name }}</td>
+                        <td class="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">
+                            {% if stock.location %}<i class="fas {% if stock.location.location_type == 'warehouse' %}fa-warehouse{% else %}fa-store{% endif %} mr-1 text-xs"></i>{{ stock.location.name }}{% else %}-{% endif %}
+                        </td>
+                        <td class="px-5 py-3"><span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">0 {{ stock.product.unit }}</span></td>
+                        <td class="px-5 py-3">
+                            <a href="{% url 'stock:entry' %}" class="inline-flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 font-medium"><i class="fas fa-plus"></i><span>Réapprovisionner</span></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Low Stock Alerts -->
+    {% if low_stock_items %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/20">
+            <h2 class="text-lg font-bold text-yellow-700 dark:text-yellow-400">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Alertes Stock Faible ({{ low_stock_items|length }})
+            </h2>
+        </div>
+        <div class="overflow-x-auto max-h-96">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50 sticky top-0">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Emplacement</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock Actuel</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Seuil Min</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for stock in low_stock_items %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-box text-gray-500"></i>
+                                </span>
+                                <span class="text-gray-800 dark:text-white font-medium">{{ stock.product.name }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4 text-gray-600 dark:text-gray-400 text-sm">
+                            {% if stock.location %}
+                            <span class="inline-flex items-center">
+                                <i class="fas {% if stock.location.location_type == 'warehouse' %}fa-warehouse{% else %}fa-store{% endif %} mr-1 text-xs"></i>
+                                {{ stock.location.name }}
+                            </span>
+                            {% else %}
+                            <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold {% if stock.quantity == 0 %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% else %}bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300{% endif %}">
+                                {{ stock.quantity|floatformat:0 }} {{ stock.product.unit }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-gray-600 dark:text-gray-400">{{ stock.product.min_stock_threshold|floatformat:0 }} {{ stock.product.unit }}</td>
+                        <td class="px-5 py-4">
+                            <a href="{% url 'stock:entry' %}" class="inline-flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition">
+                                <i class="fas fa-plus"></i>
+                                <span>Réapprovisionner</span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Movements -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+                <i class="fas fa-history text-blue-500 mr-2"></i>Mouvements Récents
+            </h2>
+        </div>
+        <div class="overflow-x-auto max-h-96">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50 sticky top-0">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produit</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantité</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Raison</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Par</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for movement in recent_movements %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4 text-gray-600 dark:text-gray-400 text-sm">{{ movement.created_at|date:"d/m/Y H:i" }}</td>
+                        <td class="px-5 py-4 text-gray-800 dark:text-white font-medium">{{ movement.product.name }}</td>
+                        <td class="px-5 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {% if movement.movement_type == 'entry' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300{% else %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% endif %}">
+                                <i class="fas {% if movement.movement_type == 'entry' %}fa-arrow-down{% else %}fa-arrow-up{% endif %} mr-1"></i>
+                                {{ movement.get_movement_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="font-semibold {% if movement.movement_type == 'entry' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                                {% if movement.movement_type == 'entry' %}+{% else %}-{% endif %}{{ movement.quantity|floatformat:0 }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-sm text-gray-600 dark:text-gray-400">{{ movement.reason }}</td>
+                        <td class="px-5 py-4 text-sm text-gray-600 dark:text-gray-400">{{ movement.user.get_full_name|default:movement.user.username }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-5 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                            <p>Aucun mouvement récent</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            <i class="fas fa-bolt text-yellow-500 mr-2"></i>Actions Rapides
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <a href="{% url 'stock:entry' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-4 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition text-center">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                    <i class="fas fa-plus-circle text-xl text-green-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Entrée Stock</div>
+            </a>
+
+            <a href="{% url 'transfers:create' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-4 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition text-center">
+                <div class="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                    <i class="fas fa-truck-fast text-xl text-cyan-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Transfert</div>
+            </a>
+
+            <a href="{% url 'locations:dashboard' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-4 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition text-center">
+                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                    <i class="fas fa-warehouse text-xl text-orange-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Emplacements</div>
+            </a>
+
+            <a href="{% url 'reports:dashboard' %}"
+               class="group bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-600 rounded-xl p-4 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
+                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
+                    <i class="fas fa-chart-line text-xl text-purple-600"></i>
+                </div>
+                <div class="font-semibold text-gray-800 dark:text-white text-sm">Rapports</div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for dark mode
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const textColor = isDarkMode ? '#e5e7eb' : '#374151';
+    const gridColor = isDarkMode ? '#374151' : '#e5e7eb';
+
+    // Common chart options
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = gridColor;
+
+    // URLs + ids used to make chart elements clickable (drill-down)
+    const MOVEMENTS_URL = "{% url 'stock:movements' %}";
+    const IN_STOCK_URL = "{% url 'stock:in_stock' %}";
+    const PRODUCT_DETAIL_URL = "{% url 'products:product_detail' 0 %}";  // replace /0/ with the real id
+    const movementDates = {{ movement_dates|safe }};
+    const categoryIds = {{ category_ids|safe }};
+    const reasonCodes = {{ reason_codes|safe }};
+    const topProductIds = {{ top_product_ids|safe }};
+
+    // Shared hover handler: pointer cursor over clickable chart elements
+    function pointerOnHover(event, elements) {
+        event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+    }
+
+    // 1. Stock Movements Bar Chart (Entries vs Exits per day) — clearer than a line
+    const movementsCtx = document.getElementById('movementsChart').getContext('2d');
+    new Chart(movementsCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ movement_labels|safe }},
+            datasets: [{
+                label: 'Entrées',
+                data: {{ entry_data|safe }},
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: '#16a34a',
+                borderWidth: 1,
+                borderRadius: 4,
+                maxBarThickness: 18
+            }, {
+                label: 'Sorties',
+                data: {{ exit_data|safe }},
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                borderColor: '#dc2626',
+                borderWidth: 1,
+                borderRadius: 4,
+                maxBarThickness: 18
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            onHover: pointerOnHover,
+            onClick: function(event, elements) {
+                if (!elements.length) return;
+                const el = elements[0];
+                const type = el.datasetIndex === 0 ? 'entry' : 'exit';
+                window.location.href = MOVEMENTS_URL + '?type=' + type + '&date=' + movementDates[el.index];
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                    titleColor: isDarkMode ? '#fff' : '#111827',
+                    bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                    borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' unités';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: gridColor
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Stock by Category Doughnut Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    const categoryData = {{ category_data|safe }};
+    const categoryLabels = {{ category_labels|safe }};
+
+    if (categoryData.length > 0 && categoryData.some(v => v > 0)) {
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryData,
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(249, 115, 22, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(236, 72, 153, 0.8)',
+                        'rgba(6, 182, 212, 0.8)'
+                    ],
+                    borderColor: isDarkMode ? '#1f2937' : '#fff',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                onHover: pointerOnHover,
+                onClick: function(event, elements) {
+                    if (!elements.length) return;
+                    const catId = categoryIds[elements[0].index];
+                    window.location.href = catId ? IN_STOCK_URL + '?category=' + catId : IN_STOCK_URL;
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 12,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                        titleColor: isDarkMode ? '#fff' : '#111827',
+                        bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.parsed.toLocaleString() + ' unités (' + percentage + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '55%'
+            }
+        });
+    } else {
+        document.getElementById('categoryChart').parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400"><div class="text-center"><i class="fas fa-chart-pie text-4xl mb-2 opacity-30"></i><p>Aucune donnée disponible</p></div></div>';
+    }
+
+    // 3. Movement Reasons Pie Chart
+    const reasonsCtx = document.getElementById('reasonsChart').getContext('2d');
+    const reasonData = {{ reason_data|safe }};
+    const reasonLabels = {{ reason_labels|safe }};
+
+    if (reasonData.length > 0 && reasonData.some(v => v > 0)) {
+        new Chart(reasonsCtx, {
+            type: 'pie',
+            data: {
+                labels: reasonLabels,
+                datasets: [{
+                    data: reasonData,
+                    backgroundColor: [
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(249, 115, 22, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(6, 182, 212, 0.8)',
+                        'rgba(236, 72, 153, 0.8)',
+                        'rgba(107, 114, 128, 0.8)'
+                    ],
+                    borderColor: isDarkMode ? '#1f2937' : '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                onHover: pointerOnHover,
+                onClick: function(event, elements) {
+                    if (!elements.length) return;
+                    window.location.href = MOVEMENTS_URL + '?reason=' + encodeURIComponent(reasonCodes[elements[0].index]) + '&date=month';
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 10,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                        titleColor: isDarkMode ? '#fff' : '#111827',
+                        bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('reasonsChart').parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400"><div class="text-center"><i class="fas fa-chart-pie text-4xl mb-2 opacity-30"></i><p>Aucun mouvement ce mois</p></div></div>';
+    }
+
+    // 4. Top Products Horizontal Bar Chart
+    const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+    const topProductData = {{ top_product_data|safe }};
+    const topProductLabels = {{ top_product_labels|safe }};
+
+    if (topProductData.length > 0 && topProductData.some(v => v > 0)) {
+        new Chart(topProductsCtx, {
+            type: 'bar',
+            data: {
+                labels: topProductLabels,
+                datasets: [{
+                    label: 'Quantité en stock',
+                    data: topProductData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                onHover: pointerOnHover,
+                onClick: function(event, elements) {
+                    if (!elements.length) return;
+                    const prodId = topProductIds[elements[0].index];
+                    if (prodId) window.location.href = PRODUCT_DETAIL_URL.replace('/0/', '/' + prodId + '/');
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                        titleColor: isDarkMode ? '#fff' : '#111827',
+                        bodyColor: isDarkMode ? '#d1d5db' : '#374151',
+                        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.x.toLocaleString() + ' unités';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: gridColor
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('topProductsChart').parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400"><div class="text-center"><i class="fas fa-box text-4xl mb-2 opacity-30"></i><p>Aucun produit en stock</p></div></div>';
+    }
+
+    // Handle dark mode toggle
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'class') {
+                location.reload();
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+    });
+});
+</script>
+{% endblock %}

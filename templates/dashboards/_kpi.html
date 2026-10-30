@@ -1,0 +1,17 @@
+{% comment %}
+Reusable KPI card for the role dashboards.
+Params (via {% include ... with %}):
+  label      : caption text
+  value      : already-formatted display value (run |floatformat at call site)
+  unit       : optional unit suffix (e.g. "FB")
+  icon       : Font Awesome class (e.g. "fa-coins")
+  tint       : blue | green | amber | red  (icon chip + accent)
+  delta      : optional secondary line (trend / hint)
+  delta_tone : up | down | muted  (colour of the delta line; default muted)
+  href       : optional drill-down link
+{% endcomment %}
+{% if tint == 'green' %}{% with chip="bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400" %}{% include "dashboards/_kpi_body.html" %}{% endwith %}
+{% elif tint == 'amber' %}{% with chip="bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" %}{% include "dashboards/_kpi_body.html" %}{% endwith %}
+{% elif tint == 'red' %}{% with chip="bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400" %}{% include "dashboards/_kpi_body.html" %}{% endwith %}
+{% else %}{% with chip="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" %}{% include "dashboards/_kpi_body.html" %}{% endwith %}
+{% endif %}

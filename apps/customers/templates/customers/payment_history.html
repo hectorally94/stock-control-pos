@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Historique des Paiements - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'customers:customer_detail' customer.pk %}" class="p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                <i class="fas fa-arrow-left text-gray-600 dark:text-gray-300"></i>
+            </a>
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                    {{ customer.name|slice:":1"|upper }}
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                        Historique des Paiements
+                    </h1>
+                    <p class="text-gray-500 dark:text-gray-400">{{ customer.name }}</p>
+                </div>
+            </div>
+        </div>
+        {% if customer.current_balance > 0 %}
+        <a href="{% url 'customers:credit_list' %}?search={{ customer.name }}" class="inline-flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-medium transition">
+            <i class="fas fa-credit-card"></i>
+            <span>Voir crédits</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Summary Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-money-bill-wave text-green-500 text-2xl"></i>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Total payé</p>
+                <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ total_paid|floatformat:0 }} FB</p>
+            </div>
+            <div class="text-center">
+                <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-hand-holding-usd text-red-500 text-2xl"></i>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Solde actuel</p>
+                <p class="text-2xl font-bold {% if customer.current_balance > 0 %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %}">
+                    {{ customer.current_balance|floatformat:0 }} FB
+                </p>
+            </div>
+            <div class="text-center">
+                <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-receipt text-blue-500 text-2xl"></i>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Paiements</p>
+                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ payments.paginator.count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments List -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="font-semibold text-gray-800 dark:text-white">
+                <i class="fas fa-history text-purple-500 mr-2"></i>Tous les paiements
+            </h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Montant</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Méthode</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Référence</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reçu par</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for payment in payments %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-white">{{ payment.created_at|date:"d/m/Y" }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ payment.created_at|time:"H:i" }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <span class="text-lg font-bold text-green-600 dark:text-green-400">+{{ payment.amount|floatformat:0 }} FB</span>
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                                {% if payment.payment_method == 'cash' %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                                {% elif payment.payment_method == 'mobile_money' %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300
+                                {% elif payment.payment_method == 'bank_transfer' %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300
+                                {% else %}bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300{% endif %}">
+                                {% if payment.payment_method == 'cash' %}
+                                <i class="fas fa-money-bill mr-1"></i>
+                                {% elif payment.payment_method == 'mobile_money' %}
+                                <i class="fas fa-mobile-alt mr-1"></i>
+                                {% elif payment.payment_method == 'bank_transfer' %}
+                                <i class="fas fa-university mr-1"></i>
+                                {% else %}
+                                <i class="fas fa-credit-card mr-1"></i>
+                                {% endif %}
+                                {{ payment.get_payment_method_display }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if payment.payment_reference %}
+                            <span class="text-sm font-mono text-gray-600 dark:text-gray-400">{{ payment.payment_reference }}</span>
+                            {% else %}
+                            <span class="text-sm text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-xs text-gray-500 dark:text-gray-400"></i>
+                                </div>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ payment.user.get_full_name|default:payment.user.username }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if payment.notes %}
+                            <p class="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs" title="{{ payment.notes }}">{{ payment.notes }}</p>
+                            {% else %}
+                            <span class="text-sm text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-5 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-receipt text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+                                <p class="text-gray-500 dark:text-gray-400 text-lg">Aucun paiement enregistré</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Les paiements apparaîtront ici</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if payments.has_other_pages %}
+        <div class="px-5 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Page {{ payments.number }} sur {{ payments.paginator.num_pages }}
+                </p>
+                <div class="flex items-center space-x-2">
+                    {% if payments.has_previous %}
+                    <a href="?page={{ payments.previous_page_number }}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% endif %}
+
+                    {% for num in payments.paginator.page_range %}
+                        {% if payments.number == num %}
+                        <span class="px-3 py-2 bg-purple-500 text-white rounded-lg">{{ num }}</span>
+                        {% elif num > payments.number|add:'-3' and num < payments.number|add:'3' %}
+                        <a href="?page={{ num }}"
+                           class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                            {{ num }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if payments.has_next %}
+                    <a href="?page={{ payments.next_page_number }}"
+                       class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation Fonctionnelle — Stock Control &amp; POS</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --ink:#e2e8f0; --muted:#94a3b8;
+    --line:#334155; --green:#22c55e; --green-d:#16a34a; --blue:#3b82f6; --amber:#f59e0b;
+    --purple:#a855f7; --red:#ef4444; --cyan:#06b6d4; --pink:#ec4899;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.6;font-size:15.5px}
+  a{color:#7dd3fc;text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{background:#0b1220;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.88em;color:#cbd5e1}
+
+  /* Layout */
+  .layout{display:flex;min-height:100vh}
+  .sidebar{width:280px;flex:0 0 280px;background:#0b1220;border-right:1px solid var(--line);
+           position:sticky;top:0;height:100vh;overflow-y:auto;padding:24px 18px}
+  .content{flex:1;max-width:980px;margin:0 auto;padding:40px 48px 120px}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .brand .logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--green),var(--green-d));
+               display:flex;align-items:center;justify-content:center;font-size:22px}
+  .brand h1{font-size:16px;margin:0;line-height:1.2}
+  .brand small{color:var(--muted);font-size:11.5px}
+  .toc{list-style:none;margin:0;padding:0;font-size:13.5px}
+  .toc li{margin:1px 0}
+  .toc a{display:block;color:var(--muted);padding:7px 12px;border-radius:8px;border-left:3px solid transparent}
+  .toc a:hover{background:var(--panel);color:var(--ink);text-decoration:none}
+  .toc a.active{background:var(--panel2);color:#fff;border-left-color:var(--green)}
+  .toc .grp{margin:16px 0 6px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding-left:12px}
+
+  /* Headings */
+  h2{font-size:27px;margin:54px 0 8px;padding-bottom:10px;border-bottom:2px solid var(--line);scroll-margin-top:20px}
+  h2:first-of-type{margin-top:0}
+  h3{font-size:19px;margin:30px 0 6px;color:#f1f5f9}
+  h4{font-size:15px;margin:18px 0 4px;color:#cbd5e1}
+  p{margin:10px 0}
+  .lead{font-size:17px;color:#cbd5e1}
+  .muted{color:var(--muted)}
+
+  /* Hero */
+  .hero{background:linear-gradient(135deg,#13233f,#0b1220);border:1px solid var(--line);
+        border-radius:var(--radius);padding:34px 34px;margin-bottom:10px}
+  .hero h2{border:0;margin:0 0 6px;font-size:32px}
+  .pill{display:inline-block;background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.35);
+        padding:3px 12px;border-radius:999px;font-size:12.5px;margin:3px 6px 3px 0}
+
+  /* Cards / callouts */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin:16px 0}
+  .grid{display:grid;gap:16px}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:860px){.grid.cols-2,.grid.cols-3{grid-template-columns:1fr}}
+  .note{border-left:4px solid var(--blue);background:#13233f;border-radius:0 10px 10px 0;padding:12px 16px;margin:16px 0}
+  .note.warn{border-left-color:var(--amber);background:#2a230f}
+  .note.ok{border-left-color:var(--green);background:#0f2417}
+
+  /* Role cards */
+  .role{border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px;background:var(--panel);position:relative;overflow:hidden}
+  .role::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--accent,var(--green))}
+  .role h4{margin:0 0 2px;font-size:16.5px;display:flex;align-items:center;gap:8px}
+  .role .fr{color:var(--muted);font-weight:400;font-size:13px}
+  .role .ic{font-size:20px}
+  .role ul{margin:10px 0 0;padding-left:18px;font-size:13.5px;color:#cbd5e1}
+  .role ul li{margin:3px 0}
+  .tagrow{margin-top:10px}
+  .tag{display:inline-block;font-size:11px;background:var(--panel2);border:1px solid var(--line);color:#cbd5e1;
+       border-radius:6px;padding:2px 8px;margin:2px 4px 2px 0}
+
+  /* Roles list + functionality accordions */
+  .roles-list{display:flex;flex-direction:column;gap:16px}
+  .funcs{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .funcs-hint{margin-top:12px;font-size:12px;color:var(--muted)}
+  .funcs-hint b{color:#cbd5e1}
+  .fitem{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel2)}
+  .fitem.open{border-color:var(--accent,var(--green))}
+  .fbtn{width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;background:transparent;border:0;
+        color:#e2e8f0;cursor:pointer;font-size:14px;text-align:left;font-family:inherit}
+  .fbtn:hover{background:rgba(255,255,255,.04)}
+  .fbtn .fic{font-size:17px;width:22px;text-align:center;flex:0 0 auto}
+  .fbtn .flabel{flex:1;font-weight:600}
+  .fbtn .fsum{color:var(--muted);font-weight:400;font-size:12.5px}
+  .fbtn .chev{color:var(--muted);transition:transform .2s;flex:0 0 auto}
+  .fitem.open .fbtn{background:rgba(255,255,255,.04)}
+  .fitem.open .chev{transform:rotate(90deg)}
+  .fpanel{max-height:0;overflow:hidden;transition:max-height .28s ease;background:#0b1220}
+  .fitem.open .fpanel{max-height:720px}
+  .fpanel .inner{padding:8px 18px 16px 46px}
+  .fpanel .why{margin:8px 0 2px;color:#cbd5e1;font-size:13px}
+  .fpanel ol{margin:6px 0 0;padding-left:18px;font-size:13px;color:#cbd5e1}
+  .fpanel ol li{margin:5px 0}
+  .fpanel .ftag{margin:10px 0 0;font-size:11.5px;color:var(--muted);font-style:italic}
+  @media(max-width:680px){.fbtn .fsum{display:none}}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);color:#e2e8f0;font-weight:600}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .check{color:var(--green);font-weight:700}
+  .no{color:#475569}
+
+  /* Steps */
+  .steps{counter-reset:step;list-style:none;padding:0;margin:14px 0}
+  .steps li{position:relative;padding:12px 16px 12px 56px;border:1px solid var(--line);border-radius:12px;margin:10px 0;background:var(--panel)}
+  .steps li::before{counter-increment:step;content:counter(step);position:absolute;left:14px;top:50%;transform:translateY(-50%);
+                    width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-d));
+                    color:#06210f;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .steps li b{color:#fff}
+
+  /* Flow diagram */
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:18px 0}
+  .flow .box{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:140px;text-align:center;font-size:13px}
+  .flow .box b{display:block;color:#fff;font-size:13.5px}
+  .flow .arrow{display:flex;align-items:center;color:var(--green);font-size:22px;padding:0 10px}
+  @media(max-width:860px){.flow{flex-direction:column}.flow .arrow{transform:rotate(90deg);padding:6px 0}}
+
+  .login-mock{max-width:340px;margin:6px auto;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,#0e1b30,#0b1220);padding:26px;text-align:center}
+  .login-mock .b{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--green),var(--green-d));margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px}
+  .login-mock input{display:block;width:100%;margin:8px 0;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:#0b1220;color:var(--muted)}
+  .login-mock .btn{margin-top:10px;width:100%;padding:11px;border-radius:9px;border:0;background:linear-gradient(135deg,var(--green),var(--green-d));color:#06210f;font-weight:700}
+  .login-mock .quick{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px}
+  .login-mock .quick span{font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+
+  .footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .totop{position:fixed;right:22px;bottom:22px;background:var(--green);color:#06210f;border:0;border-radius:50%;
+         width:46px;height:46px;font-size:20px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:0;transition:.2s;font-weight:800}
+  .totop.show{opacity:1}
+  .kbd{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="logo">🏪</div>
+      <div>
+        <h1>Stock Control &amp; POS</h1>
+        <small>Documentation Fonctionnelle</small>
+      </div>
+    </div>
+    <div class="toc-wrap">
+      <div class="grp">Comprendre l'application</div>
+      <ul class="toc">
+        <li><a href="#apercu">1. Vue d'ensemble</a></li>
+        <li><a href="#concept">2. Comment l'app est conçue</a></li>
+        <li><a href="#connexion">3. La connexion (login)</a></li>
+        <li><a href="#roles">4. Les rôles &amp; sessions</a></li>
+        <li><a href="#accueil">5. L'accueil par rôle</a></li>
+        <li><a href="#navigation">6. La navigation (le menu)</a></li>
+      </ul>
+      <div class="grp">Les flux métier</div>
+      <ul class="toc">
+        <li><a href="#flux-vente">7. Vendre (Caisse / POS)</a></li>
+        <li><a href="#flux-stock">8. Gérer le stock</a></li>
+        <li><a href="#flux-transfert">9. Transferts entre emplacements</a></li>
+        <li><a href="#flux-clients">10. Clients &amp; crédits</a></li>
+        <li><a href="#flux-depenses">11. Dépenses</a></li>
+        <li><a href="#flux-caisse">12. Sessions de caisse</a></li>
+        <li><a href="#flux-rapports">13. Rapports &amp; exports</a></li>
+        <li><a href="#flux-admin">14. Produits &amp; utilisateurs</a></li>
+      </ul>
+      <div class="grp">Démo guidée</div>
+      <ul class="toc">
+        <li><a href="#demo">🎬 Dépôt 500 → 3 boutiques</a></li>
+      </ul>
+      <div class="grp">Annexes</div>
+      <ul class="toc">
+        <li><a href="#archi">15. Schéma de circulation</a></li>
+        <li><a href="#matrice">16. Matrice des accès</a></li>
+        <li><a href="#comptes">17. Comptes de connexion</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <main class="content">
+    <div class="hero">
+      <h2>Documentation Fonctionnelle</h2>
+      <p class="lead">Comment l'application <b>Stock Control &amp; POS</b> est conçue : de la connexion jusqu'aux différentes sessions (rôles) et la manière dont elles interagissent.</p>
+      <div>
+        <span class="pill">Multi-rôles</span>
+        <span class="pill">Multi-emplacements</span>
+        <span class="pill">Point de vente</span>
+        <span class="pill">Gestion de stock</span>
+        <span class="pill">Comptabilité</span>
+        <span class="pill">Rapports</span>
+      </div>
+      <p class="muted" style="margin-top:16px;font-size:13px">Public visé : administrateur / propriétaire qui découvre l'application et veut comprendre sa logique de fonctionnement.</p>
+    </div>
+
+    <!-- 1. APERCU -->
+    <h2 id="apercu">1. Vue d'ensemble</h2>
+    <p><b>Stock Control &amp; POS</b> est une application de gestion pour boutiques, dépôts et pharmacies. Elle réunit en un seul outil :</p>
+    <div class="grid cols-3">
+      <div class="card"><h4>🛒 Point de vente</h4><p class="muted">Encaisser les ventes, gérer les clients, imprimer les reçus.</p></div>
+      <div class="card"><h4>📦 Stock</h4><p class="muted">Entrées, sorties, alertes de stock bas, historique des mouvements.</p></div>
+      <div class="card"><h4>🏬 Emplacements</h4><p class="muted">Plusieurs lieux (dépôt, boutiques) avec leur propre stock.</p></div>
+      <div class="card"><h4>🔄 Transferts</h4><p class="muted">Déplacer la marchandise du dépôt vers les boutiques.</p></div>
+      <div class="card"><h4>👥 Clients &amp; crédits</h4><p class="muted">Fiches clients, dettes, paiements échelonnés.</p></div>
+      <div class="card"><h4>💵 Comptabilité</h4><p class="muted">Dépenses, sessions de caisse, résumés quotidiens.</p></div>
+      <div class="card"><h4>📊 Rapports</h4><p class="muted">Tableaux de bord et exports (ventes, stock, dépenses, clients).</p></div>
+      <div class="card"><h4>🔐 Rôles</h4><p class="muted">Chaque employé voit uniquement ce qui concerne son métier.</p></div>
+    </div>
+    <div class="note ok"><b>Langue &amp; devise :</b> interface en français, devise XOF/FCFA affichée « FB », fuseau horaire Afrique/Abidjan, dates au format JJ/MM/AAAA.</div>
+
+    <!-- 2. CONCEPT -->
+    <h2 id="concept">2. Comment l'application est conçue</h2>
+    <p>Trois idées structurent toute l'application. Les comprendre suffit à comprendre le reste.</p>
+
+    <h3>① Tout appartient à une « Entreprise »</h3>
+    <p>L'application est <b>multi-entreprise</b> : chaque donnée (produit, vente, client, dépense…) appartient à une entreprise. Un utilisateur ne voit jamais les données d'une autre entreprise. Dans votre installation, l'entreprise est <code>Hema Enterprise</code>.</p>
+
+    <h3>② Le stock vit dans des « Emplacements »</h3>
+    <p>Le stock n'est pas global : il est rattaché à des <b>emplacements</b>. Typiquement un <b>dépôt</b> (warehouse) qui reçoit la marchandise, et une ou plusieurs <b>boutiques</b> qui vendent. La marchandise passe du dépôt aux boutiques via des <b>transferts</b>.</p>
+
+    <h3>③ Chaque utilisateur a un « Rôle » (et souvent un emplacement)</h3>
+    <p>Le <b>rôle</b> détermine ce que l'utilisateur peut faire (le menu visible, les pages autorisées). L'<b>emplacement assigné</b> détermine ce qu'il voit (un caissier ne voit que les données de sa boutique, tandis qu'un gérant voit toute l'entreprise).</p>
+
+    <div class="note"><b>En une phrase :</b> <i>L'Entreprise</i> définit le périmètre, <i>l'Emplacement</i> localise le stock, <i>le Rôle</i> définit les droits. Tout le reste découle de ces trois notions.</div>
+
+    <h3>Le principe central : la vente met à jour le stock automatiquement</h3>
+    <p>Quand une vente est enregistrée, l'application crée automatiquement les mouvements de stock correspondants et diminue les quantités — sans intervention manuelle. C'est le cœur du système (voir <a href="#archi">§15</a>).</p>
+
+    <!-- 3. CONNEXION -->
+    <h2 id="connexion">3. La connexion (point de départ)</h2>
+    <div class="grid cols-2" style="align-items:center">
+      <div>
+        <p>Toute utilisation commence par la page de connexion <code>/login/</code>. Tant qu'on n'est pas connecté, l'application redirige systématiquement vers cette page.</p>
+        <ul>
+          <li>L'utilisateur saisit son <b>nom d'utilisateur</b> et son <b>mot de passe</b>.</li>
+          <li>La page propose des <b>boutons de connexion rapide</b> par profil (Patron, Gérant, Dépôt, Caissier, Comptable) pour tester facilement.</li>
+          <li>Après connexion, tout le monde arrive sur la <b>page d'accueil</b> <code>/</code> — mais son contenu s'adapte au rôle (voir <a href="#accueil">§5</a>).</li>
+          <li>La déconnexion se fait via <code>/logout/</code> et ramène à l'écran de connexion.</li>
+        </ul>
+        <div class="note warn"><b>Sécurité :</b> chaque page vérifie le rôle. Si un utilisateur tente d'ouvrir une page non autorisée, il est renvoyé à l'accueil avec un message « Vous n'avez pas accès à cette page ».</div>
+      </div>
+      <div class="login-mock">
+        <div class="b">🏪</div>
+        <div style="color:#fff;font-weight:700;margin-bottom:2px">Connexion</div>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">Stock Control &amp; POS</div>
+        <input value="nom d'utilisateur" disabled>
+        <input value="•••••••••" disabled>
+        <div class="btn">Se connecter</div>
+        <div class="quick">
+          <span>👑 Patron</span><span>🧑‍💼 Gérant</span><span>📦 Dépôt</span><span>🧾 Caissier</span><span>📊 Comptable</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. ROLES -->
+    <h2 id="roles">4. Les rôles &amp; leurs sessions</h2>
+    <p>L'application définit <b>8 rôles</b>. Pour chacun, vous trouvez sa raison d'être, puis la <b>liste de ses fonctionnalités</b>.</p>
+    <div class="note ok"><b>👉 Cliquez sur une fonctionnalité</b> dans n'importe quelle session pour la déplier : vous verrez <i>à quoi elle sert</i> et la <i>marche à suivre, étape par étape</i>.</div>
+
+    <div class="roles-list">
+      <div class="role" style="--accent:var(--red)">
+        <h4><span class="ic">👑</span> Admin <span class="fr">/ Administrateur</span></h4>
+        <p class="muted" style="font-size:13px">Accès total à toutes les fonctions, y compris l'administration technique Django.</p>
+        <ul><li>Tout voir, tout gérer, dans toute l'entreprise.</li><li>Gérer les produits et les utilisateurs.</li><li>Accès au panneau <code>/admin/</code>.</li></ul>
+        <div class="funcs" data-fns="stock,emplacements,transferts,rapports,clients,depenses,sessions,produits,utilisateurs,admin"></div>
+      </div>
+
+      <div class="role" style="--accent:var(--purple)">
+        <h4><span class="ic">🏆</span> Owner <span class="fr">/ Patron-Propriétaire</span></h4>
+        <p class="muted" style="font-size:13px">Le propriétaire. Mêmes droits que l'admin, vision financière complète.</p>
+        <ul><li>Supervise l'ensemble de l'activité.</li><li>Peut attribuer n'importe quel rôle.</li><li>Accès au panneau <code>/admin/</code>.</li></ul>
+        <div class="funcs" data-fns="stock,emplacements,transferts,rapports,clients,depenses,sessions,produits,utilisateurs,admin"></div>
+      </div>
+
+      <div class="role" style="--accent:var(--blue)">
+        <h4><span class="ic">🧑‍💼</span> Manager <span class="fr">/ Gérant</span></h4>
+        <p class="muted" style="font-size:13px">Gère l'exploitation au quotidien (sauf l'admin technique).</p>
+        <ul><li>Produits, stock, rapports, clients, dépenses.</li><li>Crée et modifie les utilisateurs de rang inférieur.</li><li>Voit les données de toute l'entreprise.</li></ul>
+        <div class="funcs" data-fns="stock,emplacements,transferts,rapports,clients,depenses,sessions,produits,utilisateurs"></div>
+      </div>
+
+      <div class="role" style="--accent:var(--cyan)">
+        <h4><span class="ic">📦</span> Warehouse Manager <span class="fr">/ Gestionnaire Dépôt</span></h4>
+        <p class="muted" style="font-size:13px">Responsable du dépôt principal. Opérations liées à son emplacement.</p>
+        <ul><li>Gère le stock du dépôt.</li><li>Prépare et envoie les transferts vers les boutiques.</li><li>Ne voit que les données de son emplacement.</li></ul>
+        <div class="funcs" data-fns="stock,emplacements,transferts"></div>
+      </div>
+
+      <div class="role" style="--accent:var(--green)">
+        <h4><span class="ic">🏬</span> Boutique Manager <span class="fr">/ Gestionnaire Boutique</span></h4>
+        <p class="muted" style="font-size:13px">Responsable d'une boutique : vente + gestion locale.</p>
+        <ul><li>Encaisse (Caisse) et suit ses ventes.</li><li>Reçoit les transferts, gère le stock de sa boutique.</li><li>Clients, dépenses et sessions de caisse de sa boutique.</li></ul>
+        <div class="funcs" data-fns="caisse,ventes,stock,emplacements,transferts,clients,depenses,sessions"></div>
+      </div>
+
+      <div class="role" style="--accent:var(--amber)">
+        <h4><span class="ic">🗃️</span> Stock Manager <span class="fr">/ Gestionnaire de Stock</span></h4>
+        <p class="muted" style="font-size:13px">Dédié aux mouvements de stock uniquement.</p>
+        <ul><li>Entrées et sorties de stock.</li><li>Alertes de stock bas / rupture, historique.</li><li>Pas d'accès à la caisse ni à la vente.</li></ul>
+        <div class="funcs" data-fns="stock"></div>
+      </div>
+
+      <div class="role" style="--accent:var(--pink)">
+        <h4><span class="ic">🧾</span> Cashier <span class="fr">/ Caissier</span></h4>
+        <p class="muted" style="font-size:13px">Opérations de vente au comptoir.</p>
+        <ul><li>Encaisse les ventes (Caisse), recherche les produits.</li><li>Consulte les clients, ouvre/clôture sa caisse.</li><li>Limité aux données de sa boutique.</li></ul>
+        <div class="funcs" data-fns="caisse,ventes,clients,sessions"></div>
+      </div>
+
+      <div class="role" style="--accent:#64748b">
+        <h4><span class="ic">📊</span> Accountant <span class="fr">/ Comptable</span></h4>
+        <p class="muted" style="font-size:13px">Vision financière, en lecture seule.</p>
+        <ul><li>Rapports, dépenses, crédits clients, sessions de caisse.</li><li>Consulte mais ne modifie pas les transactions.</li><li>Vision sur toute l'entreprise.</li></ul>
+        <div class="funcs" data-fns="rapports,clients,depenses,sessions"></div>
+      </div>
+    </div>
+
+    <!-- 5. ACCUEIL -->
+    <h2 id="accueil">5. L'accueil, adapté à chaque rôle</h2>
+    <p>Après connexion, <b>tous les rôles arrivent sur la même page d'accueil</b> <code>/</code>, mais les informations affichées dépendent du rôle et de l'emplacement :</p>
+    <table>
+      <tr><th>Information affichée</th><th>Pour qui / comment</th></tr>
+      <tr><td>Ventes du jour</td><td>Tous — filtrées par boutique pour caissier &amp; gestionnaire boutique</td></tr>
+      <tr><td>Produits en stock</td><td>Caissier / gestionnaires de site : stock de <i>leur</i> emplacement · Admin / propriétaire / gérant / comptable : stock global de l'entreprise</td></tr>
+      <tr><td>Alertes de stock bas</td><td>Calculées selon le périmètre du rôle</td></tr>
+      <tr><td>Transferts en attente</td><td>Admin/propriétaire/gérant : tous · Gestionnaires de site : seulement ceux de leur emplacement</td></tr>
+      <tr><td>Mouvements du jour</td><td>En plus, pour gestionnaire dépôt &amp; gestionnaire de stock</td></tr>
+      <tr><td>Ventes du mois</td><td>En plus, pour comptable / admin / propriétaire / gérant</td></tr>
+    </table>
+    <div class="note"><b>À retenir :</b> le menu (à gauche/en haut) change selon le rôle, et les chiffres de l'accueil changent selon le rôle <i>et</i> l'emplacement assigné.</div>
+
+    <!-- 6. NAVIGATION -->
+    <h2 id="navigation">6. La navigation : qui voit quel menu</h2>
+    <p>Le menu principal s'adapte automatiquement. Voici chaque entrée du menu et les rôles qui la voient.</p>
+    <table>
+      <tr><th>Menu</th><th>Rôle / Section</th><th>Visible par</th></tr>
+      <tr><td><b>Caisse</b></td><td>Encaisser une vente</td><td>Gestionnaire boutique, Caissier</td></tr>
+      <tr><td><b>Mes Ventes</b></td><td>Tableau de bord des ventes</td><td>Gestionnaire boutique, Caissier</td></tr>
+      <tr><td><b>Stock</b></td><td>Gestion du stock</td><td>Admin, Propriétaire, Gérant, Gest. dépôt, Gest. boutique, Gest. stock</td></tr>
+      <tr><td><b>Emplacements</b></td><td>Lieux &amp; inventaire</td><td>Admin, Propriétaire, Gérant, Gest. dépôt, Gest. boutique</td></tr>
+      <tr><td><b>Transferts</b></td><td>Déplacements de marchandise</td><td>Admin, Propriétaire, Gérant, Gest. dépôt, Gest. boutique</td></tr>
+      <tr><td><b>Rapports</b></td><td>Analyses &amp; exports</td><td>Admin, Propriétaire, Gérant, Comptable</td></tr>
+      <tr><td><b>Clients</b></td><td>Fiches &amp; crédits</td><td>Admin, Propriétaire, Gérant, Gest. boutique, Caissier, Comptable</td></tr>
+      <tr><td><b>Dépenses</b></td><td>Charges &amp; frais</td><td>Admin, Propriétaire, Gérant, Gest. boutique, Comptable</td></tr>
+      <tr><td><b>Sessions Caisse</b></td><td>Ouverture/clôture de caisse</td><td>Admin, Propriétaire, Gérant, Gest. boutique, Caissier, Comptable</td></tr>
+      <tr><td><b>Produits</b></td><td>Catalogue &amp; catégories</td><td>Admin, Propriétaire, Gérant</td></tr>
+      <tr><td><b>Utilisateurs</b></td><td>Comptes &amp; rôles</td><td>Admin, Propriétaire, Gérant</td></tr>
+      <tr><td><b>Admin</b></td><td>Panneau technique Django</td><td>Admin, Propriétaire</td></tr>
+    </table>
+
+    <!-- ======================= FLUX ======================= -->
+    <h2 id="flux-vente">7. Vendre — la Caisse (POS)</h2>
+    <p class="lead">La <b>Caisse</b> est l'écran de vente au comptoir : on remplit un panier, on choisit le paiement, on valide, et le stock se met à jour tout seul.</p>
+
+    <div class="note warn"><b>Qui peut l'utiliser :</b> uniquement le <b>Caissier</b> et le <b>Gérant de boutique</b>. Le Patron, le Gérant et le Comptable <b>n'opèrent pas la caisse</b> — ils supervisent via les <b>Rapports</b>. Chaque vente est rattachée à <b>la boutique de l'utilisateur connecté</b>.</p></div>
+
+    <h3>L'écran de la Caisse — 2 zones</h3>
+    <div class="grid cols-2">
+      <div class="card"><h4>🛍️ À gauche — les produits</h4>
+        <ul style="font-size:13.5px">
+          <li>Une <b>barre de recherche</b> (par nom, code-barres, SKU ou catégorie — plusieurs mots possibles).</li>
+          <li>Des <b>filtres par catégorie</b>.</li>
+          <li>Des <b>boutons rapides</b> pour les produits « populaires ».</li>
+          <li>Chaque produit affiche son <b>stock disponible</b> dans la boutique (et signale <b>stock faible</b> / <b>épuisé</b>).</li>
+        </ul>
+      </div>
+      <div class="card"><h4>🧾 À droite — le panier &amp; le paiement</h4>
+        <ul style="font-size:13.5px">
+          <li>La liste des articles ajoutés, avec <b>quantité (+/−)</b> et total par ligne.</li>
+          <li>Le <b>sous-total</b> et le nombre d'articles.</li>
+          <li>Le choix du <b>client</b> et du <b>mode de paiement</b>.</li>
+          <li>Le bouton <b>Valider la Vente</b>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Faire une vente, étape par étape</h3>
+    <ol class="steps">
+      <li><b>Ajouter des produits</b> : cliquez un bouton rapide, ou tapez dans la recherche (ex. « Coca ») puis cliquez le produit. Il tombe dans le <b>panier</b>.</li>
+      <li><b>Régler les quantités</b> avec les boutons <b>+ / −</b> (ou en tapant le nombre). ⚠️ On ne peut pas dépasser le <b>stock disponible</b> : au maximum, le message « Quantité maximale atteinte » s'affiche.</li>
+      <li><b>Retirer</b> un article (icône corbeille) ou <b>Vider</b> le panier si besoin. Le <b>sous-total</b> se recalcule en direct.</li>
+      <li><b>Choisir le client</b> (facultatif) : « Client Anonyme » par défaut, ou un client de la liste. Vous pouvez en <b>créer un nouveau</b> sur place avec le bouton <b>+</b>.</li>
+      <li><b>Choisir le mode de paiement</b> (voir ci-dessous).</li>
+      <li>Cliquer <b>Valider la Vente</b> (ou la touche <b>F12</b>). Le <b>reçu</b> peut être imprimé / téléchargé en PDF.</li>
+    </ol>
+
+    <h3>Les 4 modes de paiement</h3>
+    <table>
+      <tr><th>Mode</th><th>Quand l'utiliser</th></tr>
+      <tr><td><b>💵 Espèces</b></td><td>Paiement en liquide.</td></tr>
+      <tr><td><b>📱 Mobile</b> (Mobile Money)</td><td>Paiement par téléphone (Lumicash, etc.).</td></tr>
+      <tr><td><b>💳 Carte</b></td><td>Paiement par carte bancaire.</td></tr>
+      <tr><td><b>🟣 Crédit</b></td><td>Le client paie <b>plus tard</b> : un <b>client est obligatoire</b>, et une <b>dette</b> est créée à son nom (voir <a href="#flux-clients">§10</a>).</td></tr>
+    </table>
+    <div class="note">Pour une vente <b>à crédit</b>, le bouton « Valider » reste bloqué tant qu'aucun client n'est sélectionné (message « Sélectionnez un client pour les ventes à crédit »).</div>
+
+    <h3>Ce qui se passe automatiquement à la validation</h3>
+    <div class="flow">
+        <div class="box"><b>Vente validée</b>panier + paiement</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Stock de la boutique</b>diminué (sortie)</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Si crédit</b>dette client mise à jour</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Reçu</b>PDF imprimable</div>
+    </div>
+    <ul>
+      <li>Le <b>stock baisse tout seul</b> dans la boutique du caissier (visible dans <b>Stock</b> et <b>Emplacements</b>).</li>
+      <li>La vente alimente la page <b>Mes Ventes</b> et les <b>Rapports</b>.</li>
+      <li>Les ventes en <b>espèces</b> sont rattachées à la <b>session de caisse</b> ouverte (voir <a href="#flux-caisse">§12</a>).</li>
+    </ul>
+
+    <h3>« Mes Ventes » — le tableau de bord du caissier</h3>
+    <p>Menu <b>Mes Ventes</b> : suivez votre activité commerciale.</p>
+    <ul>
+      <li>Totaux des ventes du <b>jour / semaine / mois</b>.</li>
+      <li>Répartition <b>par mode de paiement</b> et <b>meilleurs produits</b>.</li>
+      <li><b>Ventes par heure</b> (heures d'affluence) et liste des <b>ventes récentes</b>.</li>
+    </ul>
+
+    <div class="note ok"><b>Automatisme clé :</b> valider une vente crée les <b>mouvements de sortie de stock</b> et, pour une vente à crédit, met à jour la <b>dette du client</b> — sans aucune saisie manuelle.</div>
+
+    <div class="note warn"><b>Astuces &amp; questions fréquentes (Caisse)</b><br>
+      • <b>Produit absent de la recherche ?</b> Il n'existe pas encore au catalogue (menu <b>Produits</b>) ou il est désactivé.<br>
+      • <b>Impossible d'augmenter la quantité ?</b> Le <b>stock de la boutique</b> est atteint : faites un <b>transfert</b> depuis le dépôt (<a href="#flux-transfert">§9</a>) ou une <b>entrée de stock</b>.<br>
+      • <b>Vente à crédit grisée ?</b> Sélectionnez d'abord un <b>client</b>.<br>
+      • <b>Erreur de vente ?</b> Une vente <b>annulée</b> ou <b>remboursée</b> <b>remet le stock</b> automatiquement (mouvement d'entrée de correction / retour client).<br>
+      • <b>Le caissier ne voit pas Produits / Stock / Rapports ?</b> Normal : son rôle est limité à la vente (voir <a href="#roles">§4</a>).</div>
+
+    <h2 id="flux-stock">8. Gérer le stock</h2>
+    <p>Pour les rôles « stock » : gestionnaire de stock, gestionnaire dépôt/boutique, gérant, admin/propriétaire.</p>
+    <h3>Entrée de stock</h3>
+    <ol class="steps">
+      <li>Aller dans <b>Stock</b> puis <b>Entrée de Stock</b>.</li>
+      <li><b>Rechercher et sélectionner le produit</b> dans la liste déroulante (champ de recherche). <span class="kbd">Si le catalogue est vide, l'écran invite à créer d'abord un produit.</span></li>
+      <li>Saisir la <b>quantité</b>, le <b>coût unitaire</b>, et choisir l'<b>emplacement</b>.</li>
+      <li>Indiquer la <b>raison</b> (achat, retour client, correction, stock initial, transfert entrant…).</li>
+      <li><b>Enregistrer</b> : la quantité en stock de l'emplacement augmente immédiatement.</li>
+    </ol>
+    <h3>Le tableau de bord du Stock</h3>
+    <p>La page <b>Stock</b> donne une vue d'ensemble avec 4 indicateurs cliquables en haut, des résumés mensuels, et des graphiques. Voici les 3 notions clés à comprendre :</p>
+
+    <div class="grid cols-3">
+      <div class="card" style="border-left:4px solid var(--amber)">
+        <h4>⚠️ Stock Faible</h4>
+        <p class="muted" style="font-size:13px">Produits dont la quantité est <b>tombée au niveau (ou en dessous) du seuil minimum</b> défini sur la fiche produit (mais <b>encore &gt; 0</b>).</p>
+        <p style="font-size:13px">Signal : <b>il faut réapprovisionner bientôt</b>. Le chiffre est cliquable → liste des produits concernés (avec emplacement, stock actuel, seuil).</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red)">
+        <h4>⛔ Rupture de Stock</h4>
+        <p class="muted" style="font-size:13px">Produits <b>à zéro</b> dans un emplacement : on ne peut plus les vendre ni les transférer depuis ce lieu.</p>
+        <p style="font-size:13px">Signal : <b>urgent</b>. Cliquable → liste des produits épuisés, avec un raccourci <b>Réapprovisionner</b>.</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--green)">
+        <h4>🔁 Mouvements de Stock</h4>
+        <p class="muted" style="font-size:13px">Chaque variation de stock est un <b>mouvement</b> : <b>entrée</b> (+) ou <b>sortie</b> (−), avec une <b>raison</b> (achat, vente, transfert, perte, correction…).</p>
+        <p style="font-size:13px">Le graphique <b>14 jours</b> (barres vertes = entrées, rouges = sorties) et l'historique <b>Mouvements Récents</b> montrent toute l'activité.</p>
+      </div>
+    </div>
+
+    <h4>Comment chaque chiffre est calculé</h4>
+    <table>
+      <tr><th>Indicateur</th><th>Signification</th></tr>
+      <tr><td><b>Produits en Stock</b></td><td>Nombre de produits suivis + total des unités, tous emplacements confondus.</td></tr>
+      <tr><td><b>Stock Faible</b></td><td>Nb de lignes où <code>quantité ≤ seuil minimum</code> et <code>quantité &gt; 0</code>.</td></tr>
+      <tr><td><b>Rupture de Stock</b></td><td>Nb de lignes où <code>quantité = 0</code>.</td></tr>
+      <tr><td><b>Mouvements Aujourd'hui</b></td><td>Nb d'entrées + sorties enregistrées dans la journée.</td></tr>
+      <tr><td><b>Entrées / Sorties ce Mois</b></td><td>Total des unités entrées / sorties depuis le 1ᵉʳ du mois.</td></tr>
+    </table>
+
+    <div class="note"><b>Le seuil minimum</b> se règle sur chaque produit (menu <b>Produits</b> → champ « Seuil de stock minimum »). C'est lui qui déclenche l'alerte <b>Stock Faible</b>.</div>
+
+    <h3>Voir ces cas dans la démo</h3>
+    <p>Dans la démo, deux exemples ont été créés à la <b>Boutique Centre</b> pour que vous puissiez les observer :</p>
+    <ol class="steps">
+      <li>Un produit a été ramené <b>sous son seuil</b> → il apparaît dans <b>Stock Faible</b> (carte jaune + liste « Alertes Stock Faible »).</li>
+      <li>Un produit a été ramené <b>à zéro</b> → il apparaît dans <b>Rupture de Stock</b> (carte rouge + liste « Rupture de Stock »).</li>
+      <li>Toutes les opérations (entrées initiales, transferts, ventes) sont visibles dans le graphique <b>Mouvements (14 jours)</b> et dans <b>Mouvements Récents</b>.</li>
+    </ol>
+    <div class="note ok"><b>À tester vous-même :</b> en <b>Caisse</b>, vendez plusieurs fois le même produit dans une boutique jusqu'à passer sous le seuil, puis jusqu'à 0 — puis ouvrez la page <b>Stock</b> : les cartes <b>Stock Faible</b> et <b>Rupture de Stock</b> augmentent, et la vente apparaît en <b>Sortie</b> dans les mouvements.</div>
+
+    <h2 id="flux-transfert">9. Transferts entre emplacements</h2>
+    <p>Permet de déplacer la marchandise, typiquement du <b>dépôt</b> vers une <b>boutique</b>. Géré par le gestionnaire dépôt/boutique, le gérant, l'admin/propriétaire.</p>
+    <ol class="steps">
+      <li><b>Créer</b> un transfert : emplacement source, emplacement destination, et la liste des produits + quantités.</li>
+      <li><b>Envoyer</b> le transfert : la marchandise quitte la source (statut « envoyé »).</li>
+      <li>À l'arrivée, la boutique <b>reçoit</b> le transfert : le stock de la destination augmente.</li>
+      <li>Un transfert peut être <b>annulé</b> tant qu'il n'est pas finalisé.</li>
+    </ol>
+    <div class="flow">
+      <div class="box"><b>Dépôt</b>(source)</div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Transfert</b>créé &amp; envoyé</div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Boutique</b>réception</div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Stock boutique</b>augmenté</div>
+    </div>
+
+    <h2 id="flux-clients">10. Clients &amp; crédits</h2>
+    <p>Accessible aux rôles commerciaux et comptables.</p>
+    <ul>
+      <li><b>Fiches clients</b> : créer, modifier, activer/désactiver ; coordonnées, plafond de crédit, historique d'achats.</li>
+      <li><b>Crédits</b> : lorsqu'une vente est payée « à crédit », une dette est créée pour le client.</li>
+      <li><b>Paiements</b> : enregistrer les règlements partiels ou totaux ; l'historique des paiements est conservé.</li>
+    </ul>
+
+    <h2 id="flux-depenses">11. Dépenses</h2>
+    <p>Pour suivre les charges (loyer, électricité, salaires, transport…). Rôles : admin, propriétaire, gérant, gestionnaire boutique, comptable.</p>
+    <ol class="steps">
+      <li>Définir des <b>catégories de dépenses</b> (réutilisables).</li>
+      <li><b>Créer une dépense</b> : catégorie, description, montant, date, mode de paiement.</li>
+      <li>Consulter, modifier ou supprimer les dépenses ; elles alimentent les rapports financiers.</li>
+    </ol>
+
+    <h2 id="flux-caisse">12. Sessions de caisse</h2>
+    <p>Pour contrôler l'argent physique du tiroir-caisse. Rôles : caissier, gestionnaire boutique, gérant, comptable, admin/propriétaire.</p>
+    <ol class="steps">
+      <li><b>Ouvrir</b> une session en début de journée avec le <b>fond de caisse initial</b>.</li>
+      <li>Les ventes en espèces de la journée sont rattachées à la session.</li>
+      <li><b>Clôturer</b> en fin de journée : on saisit le montant compté ; l'app calcule l'<b>écart</b> avec le montant attendu.</li>
+    </ol>
+
+    <h2 id="flux-rapports">13. Rapports &amp; exports</h2>
+    <p>Tableau de bord d'analyse pour admin, propriétaire, gérant et comptable.</p>
+    <ul>
+      <li>Indicateurs : ventes du jour / semaine / mois, tendances, répartition par mode de paiement, ventes par heure, meilleurs produits.</li>
+      <li><b>Exports</b> disponibles : ventes, inventaire, dépenses, clients.</li>
+    </ul>
+
+    <h2 id="flux-admin">14. Produits &amp; utilisateurs (administration)</h2>
+    <p>Réservé à admin, propriétaire et gérant.</p>
+    <ul>
+      <li><b>Produits</b> : catalogue (créer/modifier/désactiver), avec catégories, prix d'achat/vente, seuil de stock minimum, unité.</li>
+      <li><b>Utilisateurs</b> : créer les comptes des employés, leur attribuer un <b>rôle</b> et un <b>emplacement</b>, activer/désactiver.</li>
+    </ul>
+    <div class="note warn"><b>Ordre logique de mise en route :</b> 1) créer les emplacements → 2) créer les utilisateurs (rôle + emplacement) → 3) créer les catégories &amp; produits → 4) entrer le stock initial → 5) commencer à vendre.</div>
+
+    <!-- DEMO -->
+    <h2 id="demo">🎬 Démo guidée — Dépôt 500 → 3 boutiques</h2>
+    <p class="lead">Un parcours pas à pas, simple à suivre, pour comprendre toute la logique : la marchandise <b>arrive au dépôt</b>, se <b>distribue vers les boutiques</b>, puis <b>se vend</b> et le stock <b>baisse tout seul</b>.</p>
+    <div class="note ok">
+        <b>Bonne nouvelle :</b> la démo est <b>déjà chargée</b>. Le <b>Dépôt Principal</b> contient <b>500 unités de chaque produit</b> (27 produits), et <b>50 unités de chaque produit</b> ont été envoyées à chacune des 3 boutiques. Vous pouvez donc simplement <b>regarder</b> le résultat, ou <b>refaire</b> chaque étape vous-même : rien ne casse, c'est fait pour s'entraîner.
+    </div>
+
+    <h3>🗺️ Le décor de la démo</h3>
+    <p>L'entreprise <b>Hema Enterprise</b> possède 4 emplacements :</p>
+    <table>
+        <tr><th>Emplacement</th><th>Type</th><th>Son rôle dans la démo</th></tr>
+        <tr><td><b>Dépôt Principal</b></td><td>Dépôt (Warehouse)</td><td>Reçoit toute la marchandise et approvisionne les boutiques. <b>Ne vend pas</b> aux clients.</td></tr>
+        <tr><td><b>Boutique Centre</b></td><td>Boutique</td><td>Vend aux clients au comptoir (Caisse).</td></tr>
+        <tr><td><b>Boutique Nord</b></td><td>Boutique</td><td>Vend aux clients au comptoir (Caisse).</td></tr>
+        <tr><td><b>Boutique Sud</b></td><td>Boutique</td><td>Vend aux clients au comptoir (Caisse).</td></tr>
+    </table>
+    <div class="note"><b>Comptes pour la démo</b> (boutons de connexion rapide sur la page de login) :
+        <b>Patron</b> = <code>admin</code> / <code>admin123</code> (peut tout faire) ·
+        <b>Caissier</b> = <code>cashier</code> / <code>cashier123</code> (vend en boutique). Liste complète en <a href="#comptes">§17</a>.</div>
+
+    <h3>Étape 1 — Se connecter en Patron</h3>
+    <ol class="steps">
+        <li>Ouvrez <b>l'application</b> et cliquez sur le bouton rapide <b>« Patron »</b> (ou tapez <code>admin</code> / <code>admin123</code>), puis <b>Se connecter</b>.</li>
+        <li>Vous arrivez sur l'<b>accueil</b> : ventes du jour, alertes de stock, etc. Le <b>menu</b> en haut donne accès à toutes les sections.</li>
+    </ol>
+
+    <h3>Étape 2 — Regarder les emplacements</h3>
+    <ol class="steps">
+        <li>Menu <b>Emplacements</b>. Vous voyez une section <b>Dépôts</b> (Dépôt Principal) et une section <b>Boutiques</b> (Centre, Nord, Sud).</li>
+        <li>Cliquez sur <b>Dépôt Principal</b> → bouton <b>Voir Stock</b> : la liste des 27 produits avec leurs quantités.</li>
+        <li>👉 <span class="muted">À retenir : le dépôt et chaque boutique ont leur <b>propre</b> stock, séparé.</span></li>
+    </ol>
+
+    <h3>Étape 3 — Voir le catalogue de produits</h3>
+    <ol class="steps">
+        <li>Menu <b>Produits</b> : la liste des articles (ex. <b>Coca-Cola 50cl</b>, <b>Riz Thai 5kg</b>, <b>Savon Lux 175g</b>, <b>Sucre 1kg</b>…), chacun avec un prix d'achat et un prix de vente.</li>
+        <li>Un produit doit exister ici <b>avant</b> de pouvoir entrer du stock ou le vendre.</li>
+    </ol>
+
+    <h3>Étape 4 — Faire entrer du stock au dépôt</h3>
+    <p class="muted">C'est l'arrivée de la marchandise (achat fournisseur). Exemple complet avec un produit :</p>
+    <ol class="steps">
+        <li>Menu <b>Stock</b> → bouton <b>Entrée de Stock</b>.</li>
+        <li>Dans <b>Produit</b>, tapez « <b>Coca</b> » dans la recherche puis cliquez sur <b>Coca-Cola 50cl</b>.</li>
+        <li><b>Quantité</b> : <code>500</code> · <b>Coût unitaire</b> : ex. <code>800</code> · <b>Emplacement</b> : <b>Dépôt Principal</b> · <b>Raison</b> : <b>Stock Initial</b>.</li>
+        <li>Cliquez <b>Enregistrer l'entrée</b>.</li>
+        <li>✅ <span class="muted">Résultat : le stock de Coca-Cola 50cl au Dépôt Principal passe à <b>500</b>. (Dans la démo, c'est déjà fait pour les 27 produits.)</span></li>
+    </ol>
+
+    <h3>Étape 5 — Créer un transfert vers la Boutique Centre</h3>
+    <p class="muted">On envoie une partie du stock du dépôt vers une boutique.</p>
+    <ol class="steps">
+        <li>Menu <b>Transferts</b> → bouton <b>Nouveau Transfert</b>.</li>
+        <li><b>Emplacement source</b> : <b>Dépôt Principal</b>.</li>
+        <li><b>Emplacement destination</b> : <b>Boutique Centre</b>.</li>
+        <li>Ajoutez les produits à envoyer et leur <b>quantité</b> (ex. <b>50</b> pour Coca-Cola 50cl, 50 pour les autres…).</li>
+        <li>Cliquez <b>Créer</b>. Le transfert est en statut <b>Brouillon</b>.</li>
+    </ol>
+
+    <h3>Étape 6 — Envoyer puis recevoir le transfert</h3>
+    <ol class="steps">
+        <li>Ouvrez le transfert créé. Cliquez <b>Envoyer</b> → statut <b>En transit</b> : le stock <b>quitte le Dépôt Principal</b>.</li>
+        <li>Cliquez ensuite <b>Recevoir</b> → statut <b>Reçu</b> : le stock <b>arrive à la Boutique Centre</b>.</li>
+        <li>✅ <span class="muted">Résultat : Boutique Centre = <b>50</b> par produit ; Dépôt Principal a diminué d'autant.</span></li>
+    </ol>
+
+    <h3>Étape 7 — Répéter pour Boutique Nord et Boutique Sud</h3>
+    <ol class="steps">
+        <li>Refaites les <b>Étapes 5 et 6</b> avec la destination <b>Boutique Nord</b>, puis encore avec <b>Boutique Sud</b> (50 par produit à chaque fois).</li>
+        <li>👉 <span class="muted">Au total, 3 transferts de 50 = 150 unités par produit quittent le dépôt.</span></li>
+    </ol>
+    <div class="flow">
+        <div class="box"><b>Dépôt Principal</b>500 / produit</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>3 transferts</b>50 → Centre, Nord, Sud</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Chaque boutique</b>50 / produit</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Dépôt restant</b>350 / produit</div>
+    </div>
+
+    <h3>Étape 8 — Vérifier le stock partout</h3>
+    <ol class="steps">
+        <li>Menu <b>Emplacements</b> → <b>Dépôt Principal</b> → <b>Voir Stock</b> : <b>350</b> par produit (500 − 3×50).</li>
+        <li>Ouvrez <b>Boutique Centre</b> / <b>Nord</b> / <b>Sud</b> → <b>Voir Stock</b> : <b>50</b> par produit chacune.</li>
+    </ol>
+    <table>
+        <tr><th>Emplacement</th><th>Stock par produit</th><th>Total (27 produits)</th></tr>
+        <tr><td>Dépôt Principal</td><td>350</td><td>9 450</td></tr>
+        <tr><td>Boutique Centre</td><td>50</td><td>1 350</td></tr>
+        <tr><td>Boutique Nord</td><td>50</td><td>1 350</td></tr>
+        <tr><td>Boutique Sud</td><td>50</td><td>1 350</td></tr>
+        <tr><td><b>Total entreprise</b></td><td>—</td><td><b>13 500</b></td></tr>
+    </table>
+
+    <h3>Étape 9 — Vendre en boutique (Caisse)</h3>
+    <ol class="steps">
+        <li><b>Déconnectez-vous</b>, puis connectez-vous en <b>Caissier</b> (<code>cashier</code> / <code>cashier123</code>).</li>
+        <li>Menu <b>Caisse</b>. Cliquez un <b>produit populaire</b> ou <b>recherchez</b> « Coca » pour l'ajouter au panier.</li>
+        <li>Réglez la <b>quantité</b> (ex. <b>5</b>). Choisissez le paiement <b>Espèces</b>.</li>
+        <li>Cliquez <b>Valider / Encaisser</b>. Le <b>reçu</b> peut être imprimé.</li>
+    </ol>
+
+    <h3>Étape 10 — Constater la baisse du stock</h3>
+    <ol class="steps">
+        <li>Reconnectez-vous en <b>Patron</b> (<code>admin</code>).</li>
+        <li>Menu <b>Emplacements</b> → la boutique où vous avez vendu → <b>Voir Stock</b>.</li>
+        <li>✅ <span class="muted">Le produit vendu est passé de <b>50 à 45</b> : la vente a diminué le stock <b>automatiquement</b>, sans saisie manuelle.</span></li>
+    </ol>
+
+    <h3>Étape 11 — Lire les rapports</h3>
+    <ol class="steps">
+        <li>En <b>Patron</b> / <b>Gérant</b> / <b>Comptable</b> : menu <b>Rapports</b> → ventes du jour, tendances, meilleurs produits, état du stock par emplacement.</li>
+        <li>Menu <b>Stock</b> → vue globale. Les chiffres <b>concordent</b> entre Stock, Emplacements et Rapports.</li>
+    </ol>
+
+    <div class="note ok"><b>✅ Ce que la démo prouve :</b> le stock est <b>localisé</b> (dépôt ≠ boutiques) ; les <b>transferts</b> déplacent réellement la marchandise d'un lieu à l'autre ; une <b>vente</b> diminue le stock de <i>cette</i> boutique uniquement — et tout reste <b>cohérent</b> sur chaque page (Stock, Emplacements, Rapports).</div>
+
+    <div class="note warn"><b>Astuces &amp; questions fréquentes</b><br>
+        • <b>« Stock insuffisant » au transfert ?</b> Le dépôt n'a pas assez de la quantité demandée : faites d'abord une <b>Entrée de Stock</b> (Étape 4).<br>
+        • <b>Un emplacement n'apparaît pas ?</b> Il est peut-être <b>Inactif</b> : ouvrez-le et cochez <b>Actif</b> (les inactifs s'affichent grisés).<br>
+        • <b>Ajouter une 4ᵉ boutique ?</b> Emplacements → <b>Nouvel emplacement</b> (type Boutique), puis refaites un transfert vers elle.<br>
+        • <b>Le caissier ne voit pas « Produits/Transferts » ?</b> C'est normal : chaque <b>rôle</b> ne voit que ses fonctions (voir <a href="#roles">§4</a>).</div>
+
+    <!-- 15. ARCHI -->
+    <h2 id="archi">15. Schéma de circulation des données</h2>
+    <p>Le mécanisme automatique le plus important : <b>la vente met à jour le stock</b>.</p>
+    <div class="flow">
+      <div class="box"><b>Vente</b>validée en caisse</div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Lignes de vente</b>(produits + quantités)</div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Mouvements de stock</b>créés automatiquement</div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Quantités en stock</b>diminuées</div>
+    </div>
+    <p>En parallèle, si la vente est à crédit, la <b>dette du client</b> est mise à jour. Les entrées de stock (achats, transferts entrants) suivent le chemin inverse et <b>augmentent</b> les quantités.</p>
+    <div class="grid cols-2">
+      <div class="card"><h4>Entrées (+)</h4><p class="muted">Achat, retour client, stock initial, transfert entrant, correction → le stock augmente.</p></div>
+      <div class="card"><h4>Sorties (−)</h4><p class="muted">Vente, perte, casse, péremption, transfert sortant, correction → le stock diminue.</p></div>
+    </div>
+
+    <!-- 16. MATRICE -->
+    <h2 id="matrice">16. Matrice des accès (synthèse)</h2>
+    <p>Vue d'ensemble : ✓ = accès à la section.</p>
+    <div style="overflow-x:auto">
+    <table>
+      <tr>
+        <th>Section</th>
+        <th>Admin</th><th>Propr.</th><th>Gérant</th><th>Gest. Dépôt</th><th>Gest. Boutique</th><th>Gest. Stock</th><th>Caissier</th><th>Comptable</th>
+      </tr>
+      <tr><td>Caisse / Ventes</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="check">✓</td><td class="no">—</td><td class="check">✓</td><td class="no">—</td></tr>
+      <tr><td>Stock</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>Emplacements</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>Transferts</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>Rapports</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="check">✓</td></tr>
+      <tr><td>Clients</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="check">✓</td><td class="no">—</td><td class="check">✓</td><td class="check">✓</td></tr>
+      <tr><td>Dépenses</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="check">✓</td></tr>
+      <tr><td>Sessions Caisse</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="check">✓</td><td class="no">—</td><td class="check">✓</td><td class="check">✓</td></tr>
+      <tr><td>Produits</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>Utilisateurs</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>Admin technique</td><td class="check">✓</td><td class="check">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    </table>
+    </div>
+    <p class="muted" style="font-size:12.5px">Note : « Clients » est en lecture pour le caissier et le comptable ; la création/modification de clients est réservée aux rôles de gestion.</p>
+
+    <!-- 17. COMPTES -->
+    <h2 id="comptes">17. Comptes de connexion (test)</h2>
+    <p>Comptes fournis pour explorer chaque session. Ils correspondent aux boutons de connexion rapide.</p>
+    <table>
+      <tr><th>Profil</th><th>Utilisateur</th><th>Mot de passe</th><th>Rôle</th></tr>
+      <tr><td>Patron (Admin)</td><td><code>admin</code></td><td><code>admin123</code></td><td>Accès total</td></tr>
+      <tr><td>Gérant</td><td><code>manager</code></td><td><code>manager123</code></td><td>Exploitation</td></tr>
+      <tr><td>Dépôt</td><td><code>stock_manager</code></td><td><code>stock123</code></td><td>Stock</td></tr>
+      <tr><td>Caissier</td><td><code>cashier</code></td><td><code>cashier123</code></td><td>Caisse</td></tr>
+      <tr><td>Comptable</td><td><code>accountant</code></td><td><code>accountant123</code></td><td>Finances (lecture)</td></tr>
+    </table>
+    <div class="note warn"><b>Important :</b> ce sont des identifiants de démonstration. Pensez à les modifier (et à créer les comptes réels des employés) avant une mise en production réelle.</div>
+
+    <div class="footer">
+      <p><b>Stock Control &amp; POS</b> — Documentation fonctionnelle. Entreprise : Hema Enterprise · Interface française · Devise FB (XOF).</p>
+      <p>Ce document décrit la <i>logique fonctionnelle</i> de l'application (parcours, rôles, flux) afin qu'un administrateur comprenne comment l'app est conçue.</p>
+    </div>
+  </main>
+</div>
+
+<a href="/login/" id="backlogin" style="display:none;position:fixed;left:18px;bottom:22px;background:var(--blue);color:#fff;
+   padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:50">
+   ← Retour à la connexion</a>
+<button class="totop" id="totop" title="Haut de page">↑</button>
+
+<script>
+  // ---- Functionality library (shared across all role sessions) ----
+  // Each entry: icon, label, why it exists, and the step-by-step process.
+  const FUNCS = {
+    caisse: {
+      icon:'🛒', label:'Caisse (Point de vente)',
+      summary:'Encaisser les ventes au comptoir',
+      why:"Le module de vente : transformer un panier en vente payée et imprimer le reçu.",
+      steps:[
+        "Ouvrir <b>Caisse</b> : produits populaires en boutons rapides + barre de recherche.",
+        "Ajouter des produits au panier (recherche ou bouton rapide) et régler les <b>quantités</b>.",
+        "(Optionnel) associer un <b>client</b> et appliquer une <b>remise</b>.",
+        "Choisir le <b>mode de paiement</b> (espèces, mobile money, carte, crédit).",
+        "<b>Valider</b> : le reçu PDF est disponible et le <b>stock se décrémente automatiquement</b>."
+      ],
+      note:"Une vente à crédit met aussi à jour la dette du client."
+    },
+    ventes: {
+      icon:'📈', label:'Mes Ventes',
+      summary:'Suivre la performance des ventes',
+      why:"Tableau de bord de l'activité commerciale de la boutique.",
+      steps:[
+        "Consulter le total des ventes du <b>jour / semaine / mois</b>.",
+        "Voir la liste des <b>ventes récentes</b> et leur détail.",
+        "Repérer les <b>meilleurs produits</b> et les <b>heures d'affluence</b>."
+      ]
+    },
+    stock: {
+      icon:'📦', label:'Stock',
+      summary:'Entrées, sorties et suivi des quantités',
+      why:"Maintenir des quantités justes par emplacement et garder une trace de chaque mouvement.",
+      steps:[
+        "<b>Entrée de Stock</b> : rechercher le produit, saisir <b>quantité</b> + <b>coût unitaire</b> + <b>emplacement</b> + <b>raison</b>, puis enregistrer.",
+        "Consulter <b>Stock bas</b> (sous le seuil) et <b>Rupture</b> (à zéro) pour réapprovisionner.",
+        "Suivre l'<b>historique des Mouvements</b> : qui, quand, combien, pourquoi."
+      ],
+      note:"La quantité de l'emplacement est mise à jour immédiatement à l'enregistrement."
+    },
+    emplacements: {
+      icon:'🏬', label:'Emplacements',
+      summary:'Créer et gérer les lieux et leur inventaire',
+      why:"Le stock est localisé : dépôt et boutiques ont chacun leur inventaire.",
+      steps:[
+        "<b>Gérer les types</b> (bouton « Gérer les types ») : créez/modifiez vos propres types (Boutique, Dépôt, Pharmacie…). Chaque type a un <b>comportement</b> : Dépôt (approvisionne) ou Boutique (vend).",
+        "<b>Créer</b> un emplacement (bouton « Nouvel emplacement ») : nom, code, et <b>type</b> choisi parmi vos types.",
+        "<b>Modifier</b> un emplacement depuis sa fiche (bouton « Modifier ») : nom, type, responsable, contact, dépôt principal, actif/inactif.",
+        "Ouvrir un emplacement pour voir son <b>stock détaillé</b> et comparer les niveaux entre sites.",
+        "<b>Supprimer</b> un emplacement vide ; s'il contient du stock/historique, le <b>désactiver</b> (décocher « Actif »)."
+      ],
+      note:"Création / modification / suppression (emplacements et types) réservées aux rôles admin, propriétaire et gérant."
+    },
+    transferts: {
+      icon:'🔄', label:'Transferts',
+      summary:'Déplacer la marchandise entre emplacements',
+      why:"Approvisionner les boutiques depuis le dépôt, de façon tracée.",
+      steps:[
+        "<b>Créer</b> un transfert : emplacement source, destination, produits + quantités.",
+        "<b>Envoyer</b> : la marchandise quitte la source (statut « envoyé »).",
+        "À l'arrivée, <b>recevoir</b> : le stock de la destination augmente.",
+        "Possibilité d'<b>annuler</b> tant que le transfert n'est pas finalisé."
+      ]
+    },
+    rapports: {
+      icon:'📊', label:'Rapports',
+      summary:'Analyser l\'activité et exporter',
+      why:"Piloter le commerce avec des chiffres et sortir des fichiers exploitables.",
+      steps:[
+        "Consulter les indicateurs : <b>ventes</b>, tendances, répartition par <b>paiement</b>, top produits, ventes par heure.",
+        "Filtrer par <b>période</b>.",
+        "<b>Exporter</b> : ventes, inventaire, dépenses, clients."
+      ]
+    },
+    clients: {
+      icon:'👥', label:'Clients',
+      summary:'Fiches clients et crédits',
+      why:"Connaître ses clients et gérer les ventes à crédit (les dettes).",
+      steps:[
+        "Créer / modifier une <b>fiche client</b> (coordonnées, plafond de crédit).",
+        "Suivre les <b>crédits</b> (dettes) générés par les ventes à crédit.",
+        "Enregistrer les <b>paiements</b> (partiels ou totaux) et consulter l'historique."
+      ],
+      note:"Le caissier et le comptable consultent les clients en lecture seule."
+    },
+    depenses: {
+      icon:'💸', label:'Dépenses',
+      summary:'Suivre les charges',
+      why:"Enregistrer les frais (loyer, électricité, salaires…) pour des résultats fiables.",
+      steps:[
+        "Définir des <b>catégories de dépenses</b> réutilisables.",
+        "<b>Créer une dépense</b> : catégorie, description, montant, date, mode de paiement.",
+        "Consulter / modifier ; les dépenses alimentent les <b>rapports financiers</b>."
+      ]
+    },
+    sessions: {
+      icon:'💵', label:'Sessions de Caisse',
+      summary:'Contrôler l\'argent du tiroir-caisse',
+      why:"Rapprocher l'argent physique des ventes encaissées, et détecter les écarts.",
+      steps:[
+        "<b>Ouvrir</b> une session en début de journée avec le <b>fond de caisse initial</b>.",
+        "Les ventes en <b>espèces</b> du jour sont rattachées à la session.",
+        "<b>Clôturer</b> : saisir le montant compté ; l'<b>écart</b> avec le montant attendu est calculé automatiquement."
+      ]
+    },
+    produits: {
+      icon:'🏷️', label:'Produits (catalogue)',
+      summary:'Gérer le catalogue et les catégories',
+      why:"Le catalogue alimente la caisse et le stock : sans produit, pas de vente ni d'entrée.",
+      steps:[
+        "Créer les <b>catégories</b> de produits.",
+        "Créer / modifier un <b>produit</b> : prix d'achat &amp; de vente, unité, seuil de stock minimum.",
+        "<b>Activer / désactiver</b> un produit (on ne supprime jamais, on désactive)."
+      ]
+    },
+    utilisateurs: {
+      icon:'👤', label:'Utilisateurs',
+      summary:'Gérer les comptes des employés',
+      why:"Donner à chaque employé le bon accès via son rôle et son emplacement.",
+      steps:[
+        "<b>Créer un compte</b> : nom, <b>rôle</b> et <b>emplacement</b>.",
+        "Ajuster le rôle / l'emplacement selon l'évolution du poste.",
+        "<b>Activer / désactiver</b> un accès quand un employé arrive ou part."
+      ]
+    },
+    admin: {
+      icon:'⚙️', label:'Admin technique (Django)',
+      summary:'Configuration avancée',
+      why:"Panneau technique pour la maintenance et la configuration de bas niveau.",
+      steps:[
+        "Accès direct aux données pour la <b>maintenance</b>.",
+        "Réservé aux profils techniques (<b>admin / propriétaire</b>).",
+        "À utiliser avec prudence — modifications directes en base."
+      ]
+    }
+  };
+
+  // Build the accordions inside every role's .funcs container.
+  document.querySelectorAll('.funcs').forEach(box => {
+    const keys = (box.dataset.fns || '').split(',').map(s => s.trim()).filter(Boolean);
+    keys.forEach(k => {
+      const f = FUNCS[k];
+      if (!f) return;
+      const item = document.createElement('div');
+      item.className = 'fitem';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fbtn';
+      btn.setAttribute('aria-expanded', 'false');
+      btn.innerHTML =
+        '<span class="fic">' + f.icon + '</span>' +
+        '<span class="flabel">' + f.label + ' <span class="fsum">— ' + f.summary + '</span></span>' +
+        '<span class="chev">▸</span>';
+
+      const panel = document.createElement('div');
+      panel.className = 'fpanel';
+      const inner = document.createElement('div');
+      inner.className = 'inner';
+      inner.innerHTML =
+        (f.why ? '<p class="why"><b>À quoi ça sert :</b> ' + f.why + '</p>' : '') +
+        '<ol>' + f.steps.map(s => '<li>' + s + '</li>').join('') + '</ol>' +
+        (f.note ? '<p class="ftag">ℹ︎ ' + f.note + '</p>' : '');
+      panel.appendChild(inner);
+
+      btn.addEventListener('click', () => {
+        const open = item.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      item.appendChild(btn);
+      item.appendChild(panel);
+      box.appendChild(item);
+    });
+  });
+
+  // Scrollspy: highlight active TOC item
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const map = {};
+  links.forEach(a => { const id = a.getAttribute('href').slice(1); const el = document.getElementById(id); if(el) map[id]=a; });
+  const sections = Object.keys(map).map(id => document.getElementById(id));
+  const obs = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.remove('active'));
+        const a = map[e.target.id]; if(a) a.classList.add('active');
+      }
+    });
+  }, {rootMargin:'-10% 0px -80% 0px', threshold:0});
+  sections.forEach(s=>obs.observe(s));
+
+  // Show "back to login" only when the guide is served by the app (not file://)
+  if (location.protocol !== 'file:') {
+    const bl = document.getElementById('backlogin');
+    if (bl) bl.style.display = 'inline-block';
+  }
+
+  // Back-to-top
+  const totop = document.getElementById('totop');
+  window.addEventListener('scroll', ()=>{ totop.classList.toggle('show', window.scrollY>500); });
+  totop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'edit' %}Modifier le type{% else %}Nouveau type{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+            {% if mode == 'edit' %}
+            <i class="fas fa-pen-to-square text-blue-500 mr-2"></i>Modifier le type
+            {% else %}
+            <i class="fas fa-tags text-blue-500 mr-2"></i>Nouveau type d'emplacement
+            {% endif %}
+        </h1>
+        <a href="{% url 'locations:type_list' %}" class="inline-flex items-center space-x-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+            <i class="fas fa-arrow-left"></i><span>Retour</span>
+        </a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-tag mr-1"></i>Nom du type <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="name" required value="{{ data.name }}"
+                       placeholder="Ex : Boutique, Dépôt (Warehouse), Pharmacie…"
+                       class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-gears mr-1"></i>Comportement <span class="text-red-500">*</span>
+                </label>
+                <select name="behaviour" required
+                        class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    {% for value, label in behaviour_choices %}
+                    <option value="{{ value }}" {% if data.behaviour == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    « Dépôt » approvisionne les autres emplacements ; « Boutique » vend au comptoir. Ce choix pilote les transferts et le tableau de bord.
+                </p>
+            </div>
+
+            <div>
+                <label class="inline-flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="is_active" {% if data.is_active %}checked{% endif %}
+                           class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Actif (disponible dans le formulaire d'emplacement)</span>
+                </label>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 rounded-xl font-bold transition shadow-lg hover:shadow-xl">
+                <i class="fas fa-check-circle mr-2"></i>{% if mode == 'edit' %}Enregistrer{% else %}Créer le type{% endif %}
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

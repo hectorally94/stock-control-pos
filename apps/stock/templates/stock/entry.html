@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Entrée de Stock{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+            <i class="fas fa-plus-circle text-green-500 mr-2"></i>Entrée de Stock
+        </h1>
+        <a href="{% url 'stock:dashboard' %}" class="inline-flex items-center space-x-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+            <i class="fas fa-arrow-left"></i>
+            <span>Retour</span>
+        </a>
+    </div>
+
+    {% if not has_products %}
+    <!-- Empty-state: no products in the catalog yet -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
+        <div class="mx-auto w-16 h-16 flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+            <i class="fas fa-box-open text-2xl text-amber-500"></i>
+        </div>
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-2">Aucun produit disponible</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+            Vous devez d'abord créer au moins un produit avant de pouvoir enregistrer une entrée de stock.
+        </p>
+        {% if can_create_product %}
+        <a href="{% url 'products:product_create' %}" class="inline-flex items-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg hover:shadow-xl">
+            <i class="fas fa-plus-circle"></i>
+            <span>Créer un produit</span>
+        </a>
+        {% else %}
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+            Contactez un administrateur ou un gérant pour ajouter des produits au catalogue.
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    {{ products_json|json_script:"products-data" }}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <form method="post" class="space-y-5" x-data="stockEntryForm('{{ preselected_product_id }}')"
+              @submit="if (!selectedId) { $event.preventDefault(); $refs.searchInput.focus(); }">
+            {% csrf_token %}
+            {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+
+            <div class="relative">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-box mr-1"></i>Produit <span class="text-red-500">*</span>
+                </label>
+
+                <!-- Real value submitted with the form. Browsers skip constraint
+                     validation on hidden inputs, so `required` here would do
+                     nothing — the submit button is gated on `selectedId` instead. -->
+                <input type="hidden" name="product" :value="selectedId">
+
+                <!-- Searchable input -->
+                <div class="relative">
+                    <input type="text" x-model="search" x-ref="searchInput" autocomplete="off"
+                           @focus="open = true" @click="open = true"
+                           @input="open = true; syncSelection()"
+                           @keydown.escape="open = false"
+                           @keydown.enter.prevent="selectFirst()"
+                           placeholder="Rechercher un produit..."
+                           :class="selectedId ? 'border-green-500' : 'border-gray-200 dark:border-gray-600'"
+                           class="w-full border rounded-lg pl-10 pr-10 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    <button type="button" x-show="search" @click="clearSelection()"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+
+                <!-- Dropdown list -->
+                <div x-show="open" x-cloak @click.outside="open = false"
+                     class="absolute z-30 mt-1 w-full max-h-64 overflow-y-auto bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
+                    <template x-for="p in filtered()" :key="p.id">
+                        <button type="button" @click="select(p)"
+                                :class="p.id === selectedId ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'text-gray-800 dark:text-white'"
+                                class="w-full text-left px-4 py-2.5 hover:bg-green-50 dark:hover:bg-gray-600 transition flex items-center justify-between">
+                            <span x-text="p.label"></span>
+                            <i class="fas fa-check text-green-500" x-show="p.id === selectedId"></i>
+                        </button>
+                    </template>
+                    <div x-show="filtered().length === 0" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                        <i class="fas fa-search mr-1"></i>Aucun produit trouvé
+                    </div>
+                </div>
+                <p class="mt-1 text-xs text-amber-600 dark:text-amber-400" x-show="!selectedId" x-cloak>
+                    <i class="fas fa-info-circle mr-1"></i>Tapez pour filtrer, puis cliquez sur un produit.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-sort-numeric-up mr-1"></i>Quantité <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" name="quantity" step="0.001" min="0.001" required
+                           class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                           placeholder="0.000">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-money-bill mr-1"></i>Coût Unitaire (FB)
+                    </label>
+                    <input type="number" name="unit_cost" step="0.01" min="0" x-model="cost"
+                           class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                           placeholder="0.00">
+                </div>
+            </div>
+
+            {% if preselected_location %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-map-marker-alt mr-1"></i>Emplacement
+                </label>
+                <input type="hidden" name="location" value="{{ preselected_location.id }}">
+                <div class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 flex items-center">
+                    <i class="fas fa-map-marker-alt text-teal-500 mr-2"></i>{{ preselected_location.name }} ({{ preselected_location.get_location_type_display }})
+                    <i class="fas fa-lock text-gray-400 ml-auto text-xs" title="Emplacement défini"></i>
+                </div>
+            </div>
+            {% elif locations %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-map-marker-alt mr-1"></i>Emplacement
+                </label>
+                <select name="location" class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                    <option value="">{% if user_location %}{{ user_location.name }} (par défaut){% else %}Sélectionnez un emplacement{% endif %}</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if user_location and loc.id == user_location.id %}selected{% endif %}>{{ loc.name }} ({{ loc.get_location_type_display }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-tag mr-1"></i>Raison <span class="text-red-500">*</span>
+                </label>
+                <select name="reason" required class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                    <option value="purchase">Achat</option>
+                    <option value="customer_return">Retour Client</option>
+                    <option value="correction">Correction</option>
+                    <option value="initial_stock">Stock Initial</option>
+                    <option value="transfer_in">Transfert Entrant</option>
+                    <option value="other_entry">Autre</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-file-alt mr-1"></i>Référence
+                </label>
+                <input type="text" name="reference" placeholder="N° facture, bon de livraison..."
+                       class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-sticky-note mr-1"></i>Notes
+                </label>
+                <textarea name="notes" rows="3" placeholder="Notes additionnelles..."
+                          class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition resize-none"></textarea>
+            </div>
+
+            <button type="submit" :disabled="!selectedId"
+                    :title="selectedId ? '' : 'Sélectionnez d\'abord un produit'"
+                    class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:shadow-none text-white py-4 rounded-xl font-bold transition shadow-lg hover:shadow-xl">
+                <i class="fas fa-check-circle mr-2"></i>Enregistrer l'entrée
+            </button>
+        </form>
+    </div>
+
+    <script>
+        function stockEntryForm(preselectedId) {
+            return {
+                open: false,
+                search: '',
+                selectedId: '',
+                cost: '',
+                products: JSON.parse(document.getElementById('products-data').textContent),
+                init() {
+                    // Pre-select the product passed via ?product=<pk> (fills name + cost).
+                    if (preselectedId) {
+                        const p = this.products.find(x => String(x.id) === String(preselectedId));
+                        if (p) this.select(p);
+                    }
+                },
+                filtered() {
+                    const q = this.search.trim().toLowerCase();
+                    if (!q) return this.products;
+                    return this.products.filter(p => p.label.toLowerCase().includes(q));
+                },
+                select(p) {
+                    this.selectedId = p.id;
+                    this.search = p.label;
+                    this.open = false;
+                    // Auto-fill the unit cost from the product's purchase price.
+                    if (p.price && p.price > 0) this.cost = p.price;
+                },
+                selectFirst() {
+                    const results = this.filtered();
+                    if (results.length > 0) this.select(results[0]);
+                },
+                // Typing over a chosen product drops the selection, so the form
+                // can never submit a product the user is no longer looking at.
+                syncSelection() {
+                    const chosen = this.products.find(p => p.id === this.selectedId);
+                    if (!chosen || chosen.label !== this.search) this.selectedId = '';
+                },
+                clearSelection() {
+                    this.search = '';
+                    this.selectedId = '';
+                    this.open = true;
+                    this.$refs.searchInput.focus();
+                },
+            };
+        }
+    </script>
+    {% endif %}
+</div>
+{% endblock %}
+
