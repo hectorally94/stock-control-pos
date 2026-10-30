@@ -128,6 +128,9 @@
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick } }
             },
+            // Rôle : au clic sur une barre du CA mensuel, ouvre la liste des ventes de ce mois.
+            // Liens : appelé par Chart.js ; dates de patron_dashboard (apps/core/dashboard_views.py) ;
+            // va vers pos:sales_list avec ?start= et ?end=.
             onClick: (e, els) => {
                 if (!els.length) return;
                 const p = periods[els[0].index];

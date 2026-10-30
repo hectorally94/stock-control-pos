@@ -17,12 +17,17 @@ TRANSFER_MANAGE_ROLES = ('admin', 'owner', 'manager', 'warehouse_manager', 'bout
 TRANSFER_VIEW_ROLES = TRANSFER_MANAGE_ROLES + ('accountant',)
 
 
+# Rôle : formate une quantité sans zéros inutiles pour les messages d'erreur (5.000 donne 5).
+# Liens : appelée par transfer_create ; apps/core/exports.py contient un fmt_qty distinct pour les exports.
 def _fmt_qty(value):
     """Format a quantity without trailing zeros: 5.000 -> '5', 2.500 -> '2.5'."""
     s = f"{value:.3f}".rstrip('0').rstrip('.')
     return s or '0'
 
 
+# Rôle : liste les transferts de l'entreprise (50 au plus à l'écran) avec filtres, compteurs et export.
+# Liens : route /transfers/ ; export_list_response (apps/core/exports.py) ; menu de templates/base.html ;
+# rend apps/transfers/templates/transfers/list.html.
 @login_required
 def transfer_list(request):
     """List all transfers for the enterprise"""
@@ -109,6 +114,9 @@ def transfer_list(request):
     return render(request, 'transfers/list.html', context)
 
 
+# Rôle : affiche un transfert de l'entreprise et ses articles ; can_manage_transfers règle les boutons d'action.
+# Liens : route /transfers/<pk>/ ; rend apps/transfers/templates/transfers/detail.html ;
+# cible des redirections de transfer_create, transfer_send, transfer_receive et transfer_cancel.
 @login_required
 def transfer_detail(request, pk):
     """Detail view for a specific transfer"""
@@ -136,6 +144,9 @@ def transfer_detail(request, pk):
     return render(request, 'transfers/detail.html', context)
 
 
+# Rôle : crée un transfert « brouillon » après contrôle du stock source ; aucun stock ne bouge à cette étape.
+# Liens : route /transfers/create/ ; lit LocationStock ; crée Transfer et TransferItem ;
+# rend apps/transfers/templates/transfers/create.html (products_json alimente transferForm).
 @login_required
 def transfer_create(request):
     """Create a new transfer"""
@@ -279,6 +290,8 @@ def transfer_create(request):
     return render(request, 'transfers/create.html', context)
 
 
+# Rôle : envoie le transfert en POST et affiche l'erreur éventuelle (stock insuffisant, mauvais statut).
+# Liens : route /transfers/<pk>/send/, formulaire de detail.html (transfers) ; appelle Transfer.send().
 @login_required
 def transfer_send(request, pk):
     """Send a transfer (mark as in transit)"""
@@ -305,6 +318,9 @@ def transfer_send(request, pk):
     return redirect('transfers:detail', pk=pk)
 
 
+# Rôle : enregistre les quantités reçues (champs received_qty_<id>) puis réceptionne le transfert.
+# Liens : route /transfers/<pk>/receive/, formulaire de detail.html (transfers) ; met à jour TransferItem,
+# puis appelle Transfer.receive().
 @login_required
 def transfer_receive(request, pk):
     """Receive a transfer"""
@@ -341,6 +357,8 @@ def transfer_receive(request, pk):
     return redirect('transfers:detail', pk=pk)
 
 
+# Rôle : annule le transfert en POST avec la raison saisie, ou un texte par défaut si le champ est absent.
+# Liens : route /transfers/<pk>/cancel/, formulaire de detail.html (transfers) ; appelle Transfer.cancel().
 @login_required
 def transfer_cancel(request, pk):
     """Cancel a transfer"""

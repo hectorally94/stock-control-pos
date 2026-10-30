@@ -89,6 +89,8 @@ class TransferCreateSerializer(serializers.ModelSerializer):
         model = Transfer
         fields = ['source_location', 'destination_location', 'notes', 'items']
 
+    # Rôle : crée le transfert avec l'entreprise et le créateur issus de l'utilisateur, puis ses TransferItem.
+    # Liens : POST /api/v1/transfers/ ; Transfer.save() (apps/transfers/models.py) génère la référence.
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         user = self.context['request'].user
@@ -120,6 +122,8 @@ class TransferReceiveSerializer(serializers.Serializer):
         help_text='List of items with received_quantity adjustments'
     )
 
+    # Rôle : exige une clé id dans chaque élément ; received_quantity et les autres clés ne sont pas contrôlées.
+    # Liens : appelée par is_valid() dans TransferViewSet.receive() (api/v1/views/transfers.py).
     def validate_items(self, value):
         for item in value:
             if 'id' not in item:

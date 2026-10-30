@@ -37,6 +37,8 @@ class UserFactory(DjangoModelFactory):
     is_staff = False
     is_superuser = False
     
+    # Prépare le mot de passe haché de l'utilisateur créé, avec une valeur par défaut si aucune n'est donnée.
+    # Liens : set_password du modèle User, apps/accounts/models.py
     @factory.post_generation
     def password(obj, create, extracted, **kwargs):
         if create:
@@ -293,6 +295,8 @@ class StoreSettingFactory(DjangoModelFactory):
 # HELPER FUNCTIONS
 # ============================================================================
 
+# Prépare une vente complète : plusieurs produits avec stock, lignes de vente et totaux calculés.
+# Liens : SaleFactory, SaleItemFactory, StockFactory, apps/pos/models.py
 def create_complete_sale(user=None, customer=None, num_items=3):
     """Create a complete sale with items"""
     if user is None:
@@ -318,6 +322,8 @@ def create_complete_sale(user=None, customer=None, num_items=3):
     return sale
 
 
+# Prépare une ligne de stock avec un historique de mouvements et la quantité qui en résulte.
+# Liens : StockFactory, StockMovementFactory, apps/stock/models.py
 def create_stock_with_movements(product=None, num_movements=5):
     """Create stock with movement history"""
     if product is None:

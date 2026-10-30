@@ -66,9 +66,13 @@ class Sale(models.Model):
             models.Index(fields=['location'], name='idx_sales_location'),
         ]
     
+    # Rôle : affiche la vente sous la forme « numéro - total FB ».
     def __str__(self):
         return f"{self.sale_number} - {self.total_amount} FB"
     
+    # Rôle : calcule le prochain numéro VNT-AAAAMMJJ-NNNN à partir du dernier numéro du jour.
+    # Liens : appelée par create_sale_view (apps/pos/views_frontend.py), api/v1/serializers/pos.py
+    # et apps/core/management/commands/seed_full_data.py.
     @classmethod
     def generate_sale_number(cls):
         """Generate unique sale number: VNT-YYYYMMDD-NNNN"""
@@ -111,9 +115,12 @@ class SaleItem(models.Model):
             models.Index(fields=['product'], name='idx_sale_items_product'),
         ]
     
+    # Rôle : affiche la ligne de vente sous la forme « produit x quantité ».
     def __str__(self):
         return f"{self.product_name} x {self.quantity}"
     
+    # Rôle : propriété donnant le bénéfice de la ligne : (prix de vente - prix d'achat) x quantité.
+    # Liens : lue par sales_report (apps/reports/utils/excel_generator.py) ; testée dans tests/test_models.py.
     @property
     def profit(self):
         """Calculate profit for this line item"""

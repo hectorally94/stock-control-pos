@@ -7,6 +7,8 @@ DEFAULT_TYPES = [
 ]
 
 
+# Rôle : crée les types Dépôt et Boutique par entreprise et les relie aux emplacements sans type_ref.
+# Liens : appelée par RunPython lors de « python manage.py migrate » ; écrit LocationType et Location.
 def seed_types(apps, schema_editor):
     Enterprise = apps.get_model('core', 'Enterprise')
     LocationType = apps.get_model('locations', 'LocationType')
@@ -30,6 +32,8 @@ def seed_types(apps, schema_editor):
                 location.save(update_fields=['type_ref'])
 
 
+# Rôle : supprime tous les LocationType lors de l'annulation de la migration.
+# Liens : fonction inverse de RunPython, appelée par Django au retour arrière de la migration.
 def unseed_types(apps, schema_editor):
     LocationType = apps.get_model('locations', 'LocationType')
     LocationType.objects.all().delete()

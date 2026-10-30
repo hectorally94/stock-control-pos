@@ -33,8 +33,12 @@ class ActionLogAdmin(admin.ModelAdmin):
     readonly_fields = ('user', 'action_type', 'entity_type', 'entity_id', 'description', 'old_value', 'new_value', 'ip_address', 'created_at')
     date_hierarchy = 'created_at'
     
+    # Rôle : interdit d'ajouter une entrée du journal d'actions depuis l'admin.
+    # Liens : appelée par l'admin Django ; les entrées ActionLog sont créées notamment par apps/pos/signals.py.
     def has_add_permission(self, request):
         return False
     
+    # Rôle : interdit de modifier une entrée du journal : l'admin l'affiche en lecture seule.
+    # Liens : appelée par l'admin Django pour le modèle ActionLog (apps/accounts/models.py).
     def has_change_permission(self, request, obj=None):
         return False

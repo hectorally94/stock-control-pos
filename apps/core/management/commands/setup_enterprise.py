@@ -8,6 +8,9 @@ from apps.accounts.models import User
 class Command(BaseCommand):
     help = 'Set up test enterprise with locations and assign users'
 
+    # Rôle : crée l'entreprise DEMO-ENT, un dépôt et deux boutiques ; y rattache comptes et données sans entreprise.
+    # Liens : lancée par « python manage.py setup_enterprise » ; écrit Enterprise, Location, User et les modèles
+    # de apps/products, apps/customers, apps/stock, apps/pos et apps/accounting.
     @transaction.atomic
     def handle(self, *args, **options):
         self.stdout.write('Creating test enterprise and locations...')

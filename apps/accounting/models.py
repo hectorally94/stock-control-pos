@@ -28,6 +28,7 @@ class ExpenseCategory(models.Model):
             models.Index(fields=['enterprise'], name='idx_expense_cat_enterprise'),
         ]
 
+    # Rôle : renvoie le nom de la catégorie comme libellé de l'objet.
     def __str__(self):
         return self.name
 
@@ -84,6 +85,7 @@ class Expense(models.Model):
             models.Index(fields=['location'], name='idx_expenses_location'),
         ]
 
+    # Rôle : renvoie un libellé « description - montant FB (date) ».
     def __str__(self):
         return f"{self.description} - {self.amount} FB ({self.expense_date})"
 
@@ -135,6 +137,7 @@ class CashRegisterSession(models.Model):
             models.Index(fields=['location'], name='idx_cash_sess_location'),
         ]
 
+    # Rôle : renvoie un libellé avec l'utilisateur, la date d'ouverture et le statut de la session.
     def __str__(self):
         return f"{self.user.username} - {self.opened_at.strftime('%Y-%m-%d %H:%M')} ({self.status})"
 
@@ -186,5 +189,6 @@ class DailySummary(models.Model):
             models.Index(fields=['location'], name='idx_daily_summ_location'),
         ]
 
+    # Rôle : renvoie un libellé avec la date du résumé et le bénéfice net.
     def __str__(self):
         return f"Summary for {self.summary_date}: {self.net_profit} FB profit"

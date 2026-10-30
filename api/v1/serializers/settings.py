@@ -10,6 +10,8 @@ class StoreSettingSerializer(serializers.ModelSerializer):
         fields = ['id', 'key', 'value', 'updated_at']
         read_only_fields = ['id', 'updated_at']
     
+    # Rôle : refuse une clé contenant des espaces et enregistre la clé en minuscules.
+    # Liens : appelée par DRF pour le CRUD de StoreSettingViewSet ; son action set_setting() ne passe pas par elle.
     def validate_key(self, value):
         """Ensure key is lowercase with underscores"""
         if ' ' in value:

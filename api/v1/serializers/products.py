@@ -12,6 +12,8 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'is_active', 'product_count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    # Rôle : compte uniquement les produits actifs de la catégorie.
+    # Liens : appelée par DRF pour CategoryViewSet (api/v1/views/products.py) ; lit Product via obj.products.
     def get_product_count(self, obj):
         return obj.products.filter(is_active=True).count()
 
@@ -49,6 +51,8 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    # Rôle : lit obj.stock_info.quantity ; stock_info étant un gestionnaire inverse, l'except renvoie toujours 0.
+    # Liens : appelée par DRF pour ProductViewSet ; stock_info vient de Stock.product (apps/stock/models.py).
     def get_stock_quantity(self, obj):
         """Get current stock quantity"""
         try:
@@ -56,6 +60,8 @@ class ProductSerializer(serializers.ModelSerializer):
         except:
             return 0
     
+    # Rôle : lit obj.stock_info.is_low_stock ; stock_info étant un gestionnaire inverse, l'except renvoie False.
+    # Liens : appelée par DRF pour ProductViewSet ; stock_info vient de Stock.product (apps/stock/models.py).
     def get_is_low_stock(self, obj):
         """Check if stock is low"""
         try:
@@ -63,6 +69,8 @@ class ProductSerializer(serializers.ModelSerializer):
         except:
             return False
     
+    # Rôle : refuse un prix de vente strictement inférieur au prix d'achat ; l'égalité est acceptée.
+    # Liens : appelée par DRF sur les écritures de ProductViewSet (api/v1/views/products.py).
     def validate(self, data):
         """Validate that sale_price > purchase_price"""
         purchase_price = data.get('purchase_price', self.instance.purchase_price if self.instance else None)
@@ -89,6 +97,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             'sale_price', 'purchase_price', 'stock_quantity', 'is_active'
         ]
     
+    # Rôle : lit obj.stock_info.quantity ; stock_info étant un gestionnaire inverse, l'except renvoie toujours 0.
+    # Liens : appelée par DRF sur GET /api/v1/products/ et via StockSerializer (api/v1/serializers/stock.py).
     def get_stock_quantity(self, obj):
         try:
             return float(obj.stock_info.quantity)

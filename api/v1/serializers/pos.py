@@ -40,6 +40,8 @@ class SaleItemCreateSerializer(serializers.ModelSerializer):
             'tax_amount': {'required': False},
         }
 
+    # Rôle : refuse une quantité nulle ou négative sur une ligne de vente.
+    # Liens : appelée par DRF pour chaque élément de items de SaleCreateSerializer (POST /api/v1/sales/).
     def validate_quantity(self, value):
         """Ensure quantity is positive"""
         if value <= 0:
@@ -68,6 +70,8 @@ class SaleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'sale_number', 'created_at']
     
+    # Rôle : hors crédit, exige amount_paid >= total_amount, en reprenant les valeurs existantes si absentes.
+    # Liens : appelée par DRF sur PUT/PATCH /api/v1/sales/<id>/ ; la création passe par SaleCreateSerializer.
     def validate(self, data):
         """Validate payment amounts"""
         payment_method = data.get('payment_method', self.instance.payment_method if self.instance else None)
@@ -82,6 +86,8 @@ class SaleSerializer(serializers.ModelSerializer):
         
         return data
     
+    # Rôle : ajoute un numéro de vente via Sale.generate_sale_number() puis crée la vente sans ses lignes.
+    # Liens : aucune route ne l'atteint : SaleViewSet.get_serializer_class() prend SaleCreateSerializer pour create.
     def create(self, validated_data):
         """Generate sale number before creation"""
         if not validated_data.get('sale_number'):
@@ -104,6 +110,8 @@ class SaleListSerializer(serializers.ModelSerializer):
             'item_count', 'created_at'
         ]
     
+    # Rôle : compte les lignes de la vente pour le champ item_count.
+    # Liens : appelée par DRF sur GET /api/v1/sales/ (SaleViewSet, api/v1/views/pos.py) ; lit obj.items.
     def get_item_count(self, obj):
         return obj.items.count()
 
@@ -137,6 +145,8 @@ class SaleCreateSerializer(serializers.ModelSerializer):
             'change_amount': {'required': False},
         }
 
+    # Rôle : calcule prix, sous-total, remise, total et monnaie si absents, puis crée la vente et ses SaleItem.
+    # Liens : via SaleViewSet.perform_create() ; déclenche apps/pos/signals.py et apps/customers/signals.py.
     def create(self, validated_data):
         """Create sale with nested items, computing prices/totals as needed."""
         from decimal import Decimal

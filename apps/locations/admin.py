@@ -27,6 +27,8 @@ class LocationAdmin(admin.ModelAdmin):
         }),
     )
 
+    # Rôle : renseigne created_by avec l'utilisateur connecté, seulement à la création de l'emplacement.
+    # Liens : appelée par l'admin Django à l'enregistrement ; déclenche ensuite Location.save().
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -42,6 +44,8 @@ class LocationStockAdmin(admin.ModelAdmin):
     raw_id_fields = ['product', 'location']
     ordering = ['location', 'product']
 
+    # Rôle : affiche dans la liste de l'admin une icône booléenne « Stock faible ».
+    # Liens : colonne de list_display ; lit la propriété LocationStock.is_low_stock (apps/locations/models.py).
     def is_low_stock(self, obj):
         return obj.is_low_stock
     is_low_stock.boolean = True

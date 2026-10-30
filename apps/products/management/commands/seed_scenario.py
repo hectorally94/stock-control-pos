@@ -27,6 +27,8 @@ from django.utils import timezone
 class Command(BaseCommand):
     help = 'Seed a multi-location scenario: stock the depot and distribute to boutiques.'
 
+    # Rôle : déclare --enterprise, --units, --per-boutique, --boutiques, --reset et --demo-cases.
+    # Liens : appelée par Django au lancement de la commande ; valeurs lues par Command.handle.
     def add_arguments(self, parser):
         parser.add_argument('--enterprise', dest='enterprise_code', default=None,
                             help='Enterprise code (default: the one with a main warehouse).')
@@ -41,6 +43,8 @@ class Command(BaseCommand):
         parser.add_argument('--demo-cases', dest='demo_cases', action='store_true',
                             help='Create example Stock Faible (low) and Rupture (out-of-stock) cases at a boutique.')
 
+    # Rôle : choisit l'entreprise (option, sinon celle du dépôt principal, sinon la première) et lance le scénario.
+    # Liens : python manage.py seed_scenario et tests/test_multilocation_inventory.py ; appelle Command._run.
     def handle(self, *args, **opts):
         from apps.core.models import Enterprise
         from apps.locations.models import Location
@@ -62,6 +66,9 @@ class Command(BaseCommand):
         self._run(enterprise, opts['units'], opts['per_boutique'], opts['boutiques'],
                   opts['reset'], opts['demo_cases'])
 
+    # Rôle : garantit dépôt et boutiques, approvisionne le dépôt, puis distribue par transfert, sans doublon.
+    # Liens : appelée par Command.handle ; crée des StockMovement (apps/stock/models.py) et des Transfer.
+    # Appelle Transfer.send() et Transfer.receive() (apps/transfers/models.py), qui créent les mouvements de stock.
     @transaction.atomic
     def _run(self, enterprise, units, per_boutique, n_boutiques, reset=False, demo_cases=False):
         from apps.accounts.models import User
@@ -180,6 +187,8 @@ class Command(BaseCommand):
             self.stdout.write(f'    {b.name}: {bt_total} units')
         self.stdout.write(self.style.SUCCESS('\n  Scenario ready.\n'))
 
+    # Rôle : efface transferts, mouvements et stocks de l'entreprise ; garde produits, emplacements et utilisateurs.
+    # Liens : appelée par Command._run avec --reset ; supprime directement, sans passer par StockMovement.save().
     def _reset_inventory(self, enterprise):
         """Wipe inventory + transfers for the enterprise (keeps products/locations/users)."""
         from apps.locations.models import LocationStock
@@ -193,16 +202,22 @@ class Command(BaseCommand):
         LocationStock.objects.filter(location__enterprise=enterprise).delete()
         self.stdout.write(self.style.WARNING('  Inventory reset (stock, movements, transfers cleared).'))
 
+    # Rôle : amène un produit d'une boutique en stock faible et un autre en rupture, pour la démonstration.
+    # Liens : appelée par Command._run avec --demo-cases ; utilise current_qty et drive_to.
     def _make_demo_cases(self, enterprise, boutique, products, actor):
         """Drive two products at a boutique into low-stock and out-of-stock states."""
         from decimal import Decimal
         from apps.locations.models import LocationStock
         from apps.stock.models import StockMovement
 
+        # Rôle : renvoie la quantité du produit dans la boutique, ou 0 si la ligne n'existe pas.
+        # Liens : fonction interne appelée par drive_to ; lit LocationStock (apps/locations/models.py).
         def current_qty(product):
             ls = LocationStock.objects.filter(location=boutique, product=product).first()
             return ls.quantity if ls else Decimal('0')
 
+        # Rôle : crée une sortie pour descendre à la quantité cible ; ne fait rien si le stock y est déjà ou en dessous.
+        # Liens : appelée par _make_demo_cases ; StockMovement.save() (apps/stock/models.py) met les stocks à jour.
         def drive_to(product, target, reason):
             cur = current_qty(product)
             if cur <= Decimal(target):

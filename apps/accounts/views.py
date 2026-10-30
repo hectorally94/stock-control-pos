@@ -8,9 +8,15 @@ from .models import User
 from apps.locations.models import Location
 
 
+# Rôle : fabrique un décorateur qui réserve une vue web aux rôles indiqués.
+# Liens : utilisé par les vues de ce fichier ; d'autres apps ont leur propre copie (ex. apps/products/views.py).
 def role_required(*roles):
     """Decorator to check if user has required role"""
+    # Rôle : reçoit la vue à protéger et la remplace par la fonction wrapper.
+    # Liens : usage local, appliqué par la syntaxe @role_required(...) au chargement du module.
     def decorator(view_func):
+        # Rôle : envoie l'anonyme vers « login » et le rôle refusé vers « home » avec un message d'erreur.
+        # Liens : exécutée à chaque requête ; « home » est home_dashboard (apps/core/dashboard_views.py).
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('login')
@@ -22,6 +28,9 @@ def role_required(*roles):
     return decorator
 
 
+# Rôle : liste les utilisateurs de l'entreprise avec filtres rôle, emplacement, statut et recherche.
+# Liens : route accounts:user_list (apps/accounts/urls.py), lien du menu templates/base.html.
+# Rend apps/accounts/templates/accounts/user_list.html ; lit User et Location.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def user_list(request):
@@ -87,6 +96,9 @@ def user_list(request):
     return render(request, 'accounts/user_list.html', context)
 
 
+# Rôle : crée un utilisateur après validation ; un manager ne peut pas attribuer admin, owner ou manager.
+# Liens : route accounts:user_create ; rend apps/accounts/templates/accounts/user_create.html.
+# Crée un User dans l'entreprise de l'auteur ; mot de passe haché par make_password.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def user_create(request):
@@ -184,6 +196,8 @@ def user_create(request):
     return render(request, 'accounts/user_create.html', context)
 
 
+# Rôle : affiche la fiche d'un utilisateur, seulement s'il est de la même entreprise.
+# Liens : route accounts:user_detail ; rend apps/accounts/templates/accounts/user_detail.html.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def user_detail(request, pk):
@@ -202,6 +216,8 @@ def user_detail(request, pk):
     return render(request, 'accounts/user_detail.html', context)
 
 
+# Rôle : modifie un autre utilisateur ; refuse sa propre fiche et les rôles plus élevés dans la hiérarchie.
+# Liens : route accounts:user_edit ; rend apps/accounts/templates/accounts/user_edit.html ; écrit sur User.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def user_edit(request, pk):
@@ -302,6 +318,8 @@ def user_edit(request, pk):
     return render(request, 'accounts/user_edit.html', context)
 
 
+# Rôle : active ou désactive un compte (is_active) sur POST ; refuse soi-même et les rôles plus élevés.
+# Liens : route accounts:user_toggle_active ; formulaires des templates user_list.html et user_detail.html.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def user_toggle_active(request, pk):

@@ -442,6 +442,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const topProductIds = {{ top_product_ids|safe }};
 
     // Shared hover handler: pointer cursor over clickable chart elements
+    // Rôle : affiche le curseur « main » quand la souris survole un élément cliquable d'un graphique.
+    // Liens : passée à l'option onHover des quatre graphiques Chart.js de cette page.
     function pointerOnHover(event, elements) {
         event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
     }
@@ -478,6 +480,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 mode: 'index'
             },
             onHover: pointerOnHover,
+            // Rôle : au clic sur un élément du graphique, ouvre la page de détail correspondante.
+            // Liens : appelée par Chart.js ; mène à stock:movements (mouvements, raisons), stock:in_stock (catégories)
+            // ou à la fiche produit (top produits), selon le graphique ; identifiants venant de dashboard_view.
             onClick: function(event, elements) {
                 if (!elements.length) return;
                 const el = elements[0];
@@ -500,6 +505,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
+                        // Rôle : construit le texte de l'infobulle : valeur, avec unités ou pourcentage selon le graphique.
+                        // Liens : appelée par Chart.js au survol ; données fournies par dashboard_view (apps/stock/views_frontend.py).
                         label: function(context) {
                             return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' unités';
                         }
@@ -550,6 +557,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: pointerOnHover,
+                // Rôle : au clic sur un élément du graphique, ouvre la page de détail correspondante.
+                // Liens : appelée par Chart.js ; mène à stock:movements (mouvements, raisons), stock:in_stock (catégories)
+                // ou à la fiche produit (top produits), selon le graphique ; identifiants venant de dashboard_view.
                 onClick: function(event, elements) {
                     if (!elements.length) return;
                     const catId = categoryIds[elements[0].index];
@@ -574,6 +584,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
+                            // Rôle : construit le texte de l'infobulle : valeur, avec unités ou pourcentage selon le graphique.
+                            // Liens : appelée par Chart.js au survol ; données fournies par dashboard_view (apps/stock/views_frontend.py).
                             label: function(context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
@@ -619,6 +631,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: pointerOnHover,
+                // Rôle : au clic sur un élément du graphique, ouvre la page de détail correspondante.
+                // Liens : appelée par Chart.js ; mène à stock:movements (mouvements, raisons), stock:in_stock (catégories)
+                // ou à la fiche produit (top produits), selon le graphique ; identifiants venant de dashboard_view.
                 onClick: function(event, elements) {
                     if (!elements.length) return;
                     window.location.href = MOVEMENTS_URL + '?reason=' + encodeURIComponent(reasonCodes[elements[0].index]) + '&date=month';
@@ -642,6 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
+                            // Rôle : construit le texte de l'infobulle : valeur, avec unités ou pourcentage selon le graphique.
+                            // Liens : appelée par Chart.js au survol ; données fournies par dashboard_view (apps/stock/views_frontend.py).
                             label: function(context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
@@ -680,6 +697,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: pointerOnHover,
+                // Rôle : au clic sur un élément du graphique, ouvre la page de détail correspondante.
+                // Liens : appelée par Chart.js ; mène à stock:movements (mouvements, raisons), stock:in_stock (catégories)
+                // ou à la fiche produit (top produits), selon le graphique ; identifiants venant de dashboard_view.
                 onClick: function(event, elements) {
                     if (!elements.length) return;
                     const prodId = topProductIds[elements[0].index];
@@ -697,6 +717,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
+                            // Rôle : construit le texte de l'infobulle : valeur, avec unités ou pourcentage selon le graphique.
+                            // Liens : appelée par Chart.js au survol ; données fournies par dashboard_view (apps/stock/views_frontend.py).
                             label: function(context) {
                                 return context.parsed.x.toLocaleString() + ' unités';
                             }

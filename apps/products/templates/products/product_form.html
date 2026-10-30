@@ -225,6 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const saleInput = document.getElementById('sale_price');
     const marginDisplay = document.getElementById('margin-display');
 
+    // Rôle : recalcule dans le navigateur la marge en % et le profit en FB, puis les affiche dans #margin-display.
+    // Liens : appelée au chargement et à la saisie des prix ; même formule que Product.profit_margin (côté serveur).
     function updateMargin() {
         const purchase = parseFloat(purchaseInput.value) || 0;
         const sale = parseFloat(saleInput.value) || 0;

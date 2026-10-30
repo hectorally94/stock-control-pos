@@ -28,6 +28,8 @@ class SaleViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'total_amount']
     ordering = ['-created_at']
     
+    # Rôle : choisit SaleListSerializer pour la liste, SaleCreateSerializer pour la création, sinon SaleSerializer.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/pos.py.
     def get_serializer_class(self):
         """Use appropriate serializer based on action"""
         if self.action == 'list':
@@ -36,10 +38,14 @@ class SaleViewSet(viewsets.ModelViewSet):
             return SaleCreateSerializer
         return SaleSerializer
     
+    # Rôle : ajoute seulement le caissier connecté ; enterprise et location de la vente restent vides.
+    # Liens : POST /api/v1/sales/ ; lance SaleCreateSerializer.create(), puis les signaux de apps/pos/signals.py.
     def perform_create(self, serializer):
         """Set current user as cashier when creating sale"""
         serializer.save(user=self.request.user)
     
+    # Rôle : additionne les ventes completed du jour et détaille le total par mode de paiement (None devient 0).
+    # Liens : route GET /api/v1/sales/today_summary/ ; agrège Sale (apps/pos/models.py) ; voir tests/test_api.py.
     @action(detail=False, methods=['get'])
     def today_summary(self, request):
         """
@@ -68,6 +74,8 @@ class SaleViewSet(viewsets.ModelViewSet):
 
         return Response(summary)
     
+    # Rôle : renvoie la vente en JSON ; la branche PDF exige ?format=pdf|thermal, que DRF rejette d'abord en 404.
+    # Liens : GET /api/v1/sales/<id>/receipt/ ; branche PDF : apps/pos/utils/receipt_generator.py et un ActionLog.
     @action(detail=True, methods=['get'])
     def receipt(self, request, pk=None):
         """
@@ -102,6 +110,8 @@ class SaleViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(sale)
             return Response(serializer.data)
     
+    # Rôle : passe la vente à cancelled, sauf si déjà annulée ; le stock revient seulement si elle était completed.
+    # Liens : route POST /api/v1/sales/<id>/cancel/ ; apps/pos/signals.py crée les entrées de stock et journalise.
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrManager])
     def cancel(self, request, pk=None):
         """
@@ -120,6 +130,8 @@ class SaleViewSet(viewsets.ModelViewSet):
         
         return Response({'message': 'Vente annulée avec succès'})
     
+    # Rôle : passe la vente à refunded, sauf si déjà fait ; le stock revient seulement si elle était completed.
+    # Liens : route POST /api/v1/sales/<id>/refund/ ; apps/pos/signals.py crée les entrées et journalise.
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrManager])
     def refund(self, request, pk=None):
         """

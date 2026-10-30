@@ -25,11 +25,15 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at']
     ordering = ['name']
 
+    # Rôle : utilise EnterpriseListSerializer pour la liste et EnterpriseSerializer pour les autres actions.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/core.py.
     def get_serializer_class(self):
         if self.action == 'list':
             return EnterpriseListSerializer
         return EnterpriseSerializer
 
+    # Rôle : donne toutes les entreprises à un superuser, sinon la sienne seule, ou rien s'il n'en a pas.
+    # Liens : appelée par DRF pour les routes de /api/v1/enterprises/ ; lit Enterprise (apps/core/models.py).
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser:
@@ -39,9 +43,13 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
             return Enterprise.objects.filter(id=user.enterprise.id)
         return Enterprise.objects.none()
 
+    # Rôle : enregistre l'utilisateur connecté comme créateur de la nouvelle entreprise.
+    # Liens : appelée par DRF sur POST /api/v1/enterprises/ ; remplit Enterprise.created_by (apps/core/models.py).
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+    # Rôle : passe is_active à True pour l'entreprise visée.
+    # Liens : route POST /api/v1/enterprises/<id>/activate/ ; enregistre Enterprise (apps/core/models.py).
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
         """Activate an enterprise"""
@@ -50,6 +58,8 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
         enterprise.save()
         return Response({'status': 'Enterprise activated'})
 
+    # Rôle : passe is_active à False pour l'entreprise visée, sans la supprimer.
+    # Liens : route POST /api/v1/enterprises/<id>/deactivate/ ; enregistre Enterprise (apps/core/models.py).
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
         """Deactivate an enterprise"""

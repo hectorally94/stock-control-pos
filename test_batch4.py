@@ -18,6 +18,8 @@ from apps.reports.utils.excel_generator import (
     sales_report, inventory_report, expense_report, customer_report
 )
 
+# Vérifie que le reçu PDF d'une vente terminée se génère en A4 et thermique, puis l'enregistre.
+# Liens : generate_receipt_pdf (apps/pos/utils/receipt_generator.py), modèle Sale
 def test_pdf_receipt():
     """Test PDF receipt generation"""
     print("\n" + "="*60)
@@ -64,6 +66,8 @@ def test_pdf_receipt():
         return False
 
 
+# Vérifie que le rapport Excel des ventes des 30 derniers jours se génère et s'enregistre.
+# Liens : sales_report (apps/reports/utils/excel_generator.py)
 def test_excel_sales_report():
     """Test Excel sales report generation"""
     print("\n" + "="*60)
@@ -98,6 +102,8 @@ def test_excel_sales_report():
         return False
 
 
+# Vérifie que le rapport Excel d'inventaire se génère et s'enregistre sans erreur.
+# Liens : inventory_report (apps/reports/utils/excel_generator.py)
 def test_excel_inventory_report():
     """Test Excel inventory report generation"""
     print("\n" + "="*60)
@@ -125,6 +131,8 @@ def test_excel_inventory_report():
         return False
 
 
+# Vérifie que le rapport Excel des dépenses des 30 derniers jours se génère et s'enregistre.
+# Liens : expense_report (apps/reports/utils/excel_generator.py)
 def test_excel_expense_report():
     """Test Excel expense report generation"""
     print("\n" + "="*60)
@@ -157,6 +165,8 @@ def test_excel_expense_report():
         return False
 
 
+# Vérifie que le rapport Excel des clients se génère et s'enregistre sans erreur.
+# Liens : customer_report (apps/reports/utils/excel_generator.py)
 def test_excel_customer_report():
     """Test Excel customer report generation"""
     print("\n" + "="*60)
@@ -184,6 +194,8 @@ def test_excel_customer_report():
         return False
 
 
+# Prépare et lance les 5 vérifications, affiche le bilan et renvoie 0 si tout réussit, sinon 1.
+# Liens : fonctions test_* de ce fichier, apps/pos/utils/receipt_generator.py
 def main():
     """Run all tests"""
     print("\n" + "="*60)

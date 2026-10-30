@@ -42,10 +42,14 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     ordering_fields = ['expense_date', 'amount', 'created_at']
     ordering = ['-expense_date']
     
+    # Rôle : enregistre la dépense au nom de l'utilisateur connecté ; user est en lecture seule côté client.
+    # Liens : appelée par DRF sur POST /api/v1/expenses/ ; crée Expense (apps/accounting/models.py).
     def perform_create(self, serializer):
         """Set current user when creating expense"""
         serializer.save(user=self.request.user)
     
+    # Rôle : renvoie le total et le nombre de dépenses, filtrés par start_date, end_date et category_id.
+    # Liens : route GET /api/v1/expenses/summary/ ; agrège Expense (apps/accounting/models.py).
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """
@@ -89,6 +93,8 @@ class CashRegisterSessionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['opened_at', 'closed_at']
     ordering = ['-opened_at']
     
+    # Rôle : renvoie la première session ouverte de l'utilisateur connecté, sinon une réponse 404.
+    # Liens : route GET /api/v1/cash-register-sessions/current_session/ ; lit CashRegisterSession.
     @action(detail=False, methods=['get'])
     def current_session(self, request):
         """
@@ -100,6 +106,8 @@ class CashRegisterSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response({'message': 'Aucune session ouverte'}, status=status.HTTP_404_NOT_FOUND)
     
+    # Rôle : ferme la session ; sans expected_balance, ce solde prend closing_balance et la différence vaut 0.
+    # Liens : route POST /api/v1/cash-register-sessions/<id>/close_session/ ; enregistre CashRegisterSession.
     @action(detail=True, methods=['post'])
     def close_session(self, request, pk=None):
         """
@@ -146,6 +154,8 @@ class DailySummaryViewSet(viewsets.ModelViewSet):
     ordering_fields = ['summary_date']
     ordering = ['-summary_date']
     
+    # Rôle : renvoie le résumé d'une date (aujourd'hui par défaut) sans le créer ; 404 s'il n'existe pas.
+    # Liens : route GET /api/v1/daily-summaries/daily_summary/ ; données créées par generate_daily_summary.
     @action(detail=False, methods=['get'])
     def daily_summary(self, request):
         """

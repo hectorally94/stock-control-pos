@@ -42,10 +42,14 @@ SHEET_CATEGORIES = [
 ]
 
 
+# Rôle : teste si une cellule est un int ou un float, en excluant les booléens.
+# Liens : utilisée localement par Command._parse_sheet.
 def _is_number(x):
     return isinstance(x, (int, float)) and not isinstance(x, bool)
 
 
+# Rôle : convertit une cellule en texte de code produit (32209.0 devient « 32209 », vide si None).
+# Liens : utilisée localement par Command._parse_sheet.
 def _clean_id(v):
     """Turn a cell value into a product name/code string (32209.0 -> '32209')."""
     if v is None:
@@ -55,6 +59,8 @@ def _clean_id(v):
     return str(v).strip()
 
 
+# Rôle : convertit une valeur en Decimal, avec 0 pour une valeur vide ou invalide.
+# Liens : utilisée localement par Command._parse_sheet pour le prix.
 def _to_decimal(v):
     if v is None or v == '':
         return Decimal('0')
@@ -67,6 +73,8 @@ def _to_decimal(v):
 class Command(BaseCommand):
     help = "Full-reset the catalog and import products from the Excel stock list."
 
+    # Rôle : déclare --file, --enterprise, --location, --no-wipe et --dry-run.
+    # Liens : appelée par Django au lancement de la commande ; valeurs lues par Command.handle.
     def add_arguments(self, parser):
         parser.add_argument('--file', default=DEFAULT_FILE, help='Path to the .xlsx file')
         parser.add_argument('--enterprise', default='DEMO-ENT', help='Enterprise code to import into')
@@ -76,6 +84,8 @@ class Command(BaseCommand):
 
     # -- parsing -------------------------------------------------------------
 
+    # Rôle : repère l'en-tête d'une feuille (ligne contenant QTE) puis produit un dict nom/quantité/prix par ligne.
+    # Liens : appelée par Command.handle pour chaque feuille ; utilise _clean_id, _is_number et _to_decimal.
     def _parse_sheet(self, ws):
         """Yield {'name','qty','price'} dicts for the data rows of one sheet."""
         rows = [list(r) for r in ws.iter_rows(values_only=True)]
@@ -91,6 +101,8 @@ class Command(BaseCommand):
 
         header = rows[header_idx]
 
+        # Rôle : renvoie l'indice de la première colonne dont l'en-tête (majuscules, sans espaces) vérifie le test.
+        # Liens : fonction interne, utilisée seulement par Command._parse_sheet.
         def find_col(pred):
             for j, c in enumerate(header):
                 if isinstance(c, str) and pred(c.upper().replace(' ', '')):
@@ -117,6 +129,9 @@ class Command(BaseCommand):
 
     # -- wipe ----------------------------------------------------------------
 
+    # Rôle : efface produits, catégories, ventes, crédits, mouvements, transferts et stocks d'une entreprise.
+    # Liens : appelée par Command.handle sauf avec --no-wipe ; remet aussi à zéro les compteurs de Customer.
+    # L'ordre des suppressions respecte les clés RESTRICT et PROTECT de ces modèles.
     def _wipe(self, ent):
         """Delete every product for this enterprise and all data referencing it."""
         # Order matters: RESTRICT/PROTECT rows must go before the products they lock.
@@ -141,6 +156,9 @@ class Command(BaseCommand):
 
     # -- main ----------------------------------------------------------------
 
+    # Rôle : résout entreprise, emplacement et utilisateur, lit le classeur, puis importe dans une transaction.
+    # Liens : python manage.py import_catalog et tests/test_import_catalog.py ; écrit Category et Product.
+    # Crée des StockMovement : StockMovement.save() (apps/stock/models.py) met à jour Stock et LocationStock.
     def handle(self, *args, **opts):
         path = opts['file']
         if not os.path.exists(path):

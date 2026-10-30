@@ -9,6 +9,9 @@ from apps.stock.models import StockMovement
 from apps.accounts.models import ActionLog
 
 
+# Rôle : à la création d'une ligne d'une vente « completed », crée un StockMovement de sortie (reason=sale).
+# Liens : signal post_save de SaleItem (create_sale_view, api/v1/serializers/pos.py) ;
+# StockMovement.save() (apps/stock/models.py) met ensuite à jour Stock et LocationStock.
 @receiver(post_save, sender=SaleItem)
 def create_stock_movement_on_sale_item(sender, instance, created, **kwargs):
     """
@@ -31,6 +34,9 @@ def create_stock_movement_on_sale_item(sender, instance, created, **kwargs):
         )
 
 
+# Rôle : si une vente « completed » passe à cancelled ou refunded, crée une entrée de stock par ligne.
+# Liens : signal post_save de Sale (ex. cancel/refund de api/v1/views/pos.py) ; lit _original_status
+# posé par store_original_sale_status ; StockMovement.save() (apps/stock/models.py) remet le stock.
 @receiver(post_save, sender=Sale)
 def handle_sale_status_changes(sender, instance, created, **kwargs):
     """
@@ -80,6 +86,8 @@ def handle_sale_status_changes(sender, instance, created, **kwargs):
                     )
 
 
+# Rôle : relit en base le statut actuel de la vente et le garde dans instance._original_status.
+# Liens : signal pre_save de Sale ; valeur lue par handle_sale_status_changes et log_sale_action.
 @receiver(pre_save, sender=Sale)
 def store_original_sale_status(sender, instance, **kwargs):
     """
@@ -95,6 +103,9 @@ def store_original_sale_status(sender, instance, **kwargs):
         instance._original_status = None
 
 
+# Rôle : journalise la création d'une vente, puis uniquement ses changements de statut.
+# Liens : signal post_save de Sale ; écrit dans ActionLog (apps/accounts/models.py) ;
+# utilise _original_status posé par store_original_sale_status.
 @receiver(post_save, sender=Sale)
 def log_sale_action(sender, instance, created, **kwargs):
     """

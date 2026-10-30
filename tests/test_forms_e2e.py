@@ -32,6 +32,8 @@ from tests.factories import (
 # HELPERS
 # ============================================================================
 
+# Prépare une entreprise de test à laquelle rattacher les données.
+# Liens : modèle Enterprise, apps/core/models.py
 @pytest.fixture
 def enterprise():
     """Create an enterprise for testing"""
@@ -42,6 +44,8 @@ def enterprise():
     )
 
 
+# Prépare un dépôt principal rattaché à l'entreprise de test.
+# Liens : modèle Location, apps/locations/models.py
 @pytest.fixture
 def location_warehouse(enterprise):
     """Create a warehouse location"""
@@ -54,6 +58,8 @@ def location_warehouse(enterprise):
     )
 
 
+# Prépare une boutique rattachée à l'entreprise de test.
+# Liens : modèle Location, apps/locations/models.py
 @pytest.fixture
 def location_boutique(enterprise):
     """Create a boutique location"""
@@ -65,6 +71,8 @@ def location_boutique(enterprise):
     )
 
 
+# Prépare un admin rattaché à l'entreprise et au dépôt.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def admin_user_with_enterprise(enterprise, location_warehouse):
     """Admin user with enterprise and location"""
@@ -76,6 +84,8 @@ def admin_user_with_enterprise(enterprise, location_warehouse):
     return user
 
 
+# Prépare un manager rattaché à l'entreprise et au dépôt.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def manager_user_with_enterprise(enterprise, location_warehouse):
     """Manager user with enterprise"""
@@ -86,6 +96,8 @@ def manager_user_with_enterprise(enterprise, location_warehouse):
     )
 
 
+# Prépare un caissier rattaché à l'entreprise et à la boutique.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def cashier_user_with_enterprise(enterprise, location_boutique):
     """Cashier user with enterprise and boutique location"""
@@ -96,6 +108,8 @@ def cashier_user_with_enterprise(enterprise, location_boutique):
     )
 
 
+# Prépare un stock_manager rattaché à l'entreprise et au dépôt.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def stock_manager_user_with_enterprise(enterprise, location_warehouse):
     """Stock manager with enterprise"""
@@ -106,6 +120,8 @@ def stock_manager_user_with_enterprise(enterprise, location_warehouse):
     )
 
 
+# Prépare un comptable rattaché à l'entreprise, sans emplacement.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def accountant_user_with_enterprise(enterprise):
     """Accountant user with enterprise"""
@@ -115,6 +131,8 @@ def accountant_user_with_enterprise(enterprise):
     )
 
 
+# Prépare un client de test Django déjà connecté avec l'utilisateur donné.
+# Liens : django.test.Client et sa méthode force_login
 def login_client(user):
     """Create a logged-in test client"""
     client = Client()
@@ -130,11 +148,15 @@ def login_client(user):
 class TestLoginForm:
     """Tests for the login form"""
 
+    # Vérifie que la page de connexion s'affiche (200).
+    # Liens : URL login, LoginView déclarée dans stock_control/urls.py
     def test_login_page_loads(self):
         client = Client()
         response = client.get(reverse('login'))
         assert response.status_code == 200
 
+    # Vérifie que une connexion avec des identifiants valides redirige (302).
+    # Liens : URL login, LoginView déclarée dans stock_control/urls.py
     def test_login_with_valid_credentials(self):
         user = UserFactory(role='admin')
         client = Client()
@@ -145,6 +167,8 @@ class TestLoginForm:
         # Successful login redirects
         assert response.status_code == 302
 
+    # Vérifie que un mauvais mot de passe laisse l'utilisateur sur la page (200).
+    # Liens : URL login, LoginView déclarée dans stock_control/urls.py
     def test_login_with_invalid_password(self):
         user = UserFactory(role='admin')
         client = Client()
@@ -155,6 +179,8 @@ class TestLoginForm:
         # Failed login stays on page
         assert response.status_code == 200
 
+    # Vérifie que un utilisateur inexistant reste sur la page de connexion (200).
+    # Liens : URL login, LoginView déclarée dans stock_control/urls.py
     def test_login_with_nonexistent_user(self):
         client = Client()
         response = client.post(reverse('login'), {
@@ -163,6 +189,8 @@ class TestLoginForm:
         })
         assert response.status_code == 200
 
+    # Vérifie que des champs vides laissent sur la page de connexion (200).
+    # Liens : URL login, LoginView déclarée dans stock_control/urls.py
     def test_login_with_empty_fields(self):
         client = Client()
         response = client.post(reverse('login'), {
@@ -180,11 +208,15 @@ class TestLoginForm:
 class TestUserCreateForm:
     """Tests for user creation form"""
 
+    # Vérifie que un admin peut afficher le formulaire de création d'utilisateur.
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_user_create_page_loads(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('accounts:user_create'))
         assert response.status_code == 200
 
+    # Vérifie que un admin crée un caissier rattaché à sa propre entreprise (302).
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_create_user_success(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounts:user_create'), {
@@ -203,6 +235,8 @@ class TestUserCreateForm:
         assert new_user.role == 'cashier'
         assert new_user.enterprise == admin_user_with_enterprise.enterprise
 
+    # Vérifie que un nom d'utilisateur vide réaffiche le formulaire (200).
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_create_user_missing_username(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounts:user_create'), {
@@ -214,6 +248,8 @@ class TestUserCreateForm:
         })
         assert response.status_code == 200  # Re-renders form with errors
 
+    # Vérifie que un nom d'utilisateur déjà pris réaffiche le formulaire (200).
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_create_user_duplicate_username(self, admin_user_with_enterprise):
         UserFactory(username='existing_user')
         client = login_client(admin_user_with_enterprise)
@@ -226,6 +262,8 @@ class TestUserCreateForm:
         })
         assert response.status_code == 200  # Re-renders with errors
 
+    # Vérifie que deux mots de passe différents réaffichent le formulaire (200).
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_create_user_password_mismatch(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounts:user_create'), {
@@ -237,6 +275,8 @@ class TestUserCreateForm:
         })
         assert response.status_code == 200
 
+    # Vérifie que un mot de passe trop court réaffiche le formulaire (200).
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_create_user_short_password(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounts:user_create'), {
@@ -248,6 +288,8 @@ class TestUserCreateForm:
         })
         assert response.status_code == 200
 
+    # Vérifie que l'emplacement choisi est enregistré sur le nouvel utilisateur.
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_create_user_with_location(self, admin_user_with_enterprise, location_boutique):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounts:user_create'), {
@@ -262,6 +304,8 @@ class TestUserCreateForm:
         new_user = User.objects.get(username='boutique_cashier')
         assert new_user.location == location_boutique
 
+    # Vérifie que un manager ne peut pas créer un compte admin (200, aucun compte créé).
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_manager_cannot_create_admin(self, manager_user_with_enterprise):
         client = login_client(manager_user_with_enterprise)
         response = client.post(reverse('accounts:user_create'), {
@@ -275,6 +319,8 @@ class TestUserCreateForm:
         assert response.status_code == 200
         assert not User.objects.filter(username='hackeradmin').exists()
 
+    # Vérifie que un caissier est redirigé hors du formulaire de création d'utilisateur.
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_cashier_cannot_access_user_create(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('accounts:user_create'))
@@ -285,6 +331,8 @@ class TestUserCreateForm:
 class TestUserEditForm:
     """Tests for user edit form"""
 
+    # Vérifie que un admin peut afficher le formulaire de modification d'un utilisateur.
+    # Liens : accounts:user_edit, user_edit dans apps/accounts/views.py
     def test_edit_user_page_loads(self, admin_user_with_enterprise):
         target = UserFactory(
             role='cashier',
@@ -294,6 +342,8 @@ class TestUserEditForm:
         response = client.get(reverse('accounts:user_edit', args=[target.pk]))
         assert response.status_code == 200
 
+    # Vérifie que un admin modifie l'email et le prénom d'un utilisateur (302).
+    # Liens : accounts:user_edit, user_edit dans apps/accounts/views.py
     def test_edit_user_success(self, admin_user_with_enterprise):
         target = UserFactory(
             role='cashier',
@@ -312,6 +362,8 @@ class TestUserEditForm:
         assert target.email == 'updated@example.com'
         assert target.first_name == 'UpdatedFirst'
 
+    # Vérifie que un admin peut changer le mot de passe d'un utilisateur.
+    # Liens : accounts:user_edit, user_edit dans apps/accounts/views.py
     def test_edit_user_change_password(self, admin_user_with_enterprise):
         target = UserFactory(
             role='cashier',
@@ -327,6 +379,8 @@ class TestUserEditForm:
         target.refresh_from_db()
         assert target.check_password('newpassword123')
 
+    # Vérifie que un admin est redirigé s'il ouvre la modification de son propre compte.
+    # Liens : accounts:user_edit, user_edit dans apps/accounts/views.py
     def test_cannot_edit_self(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('accounts:user_edit', args=[admin_user_with_enterprise.pk]))
@@ -337,6 +391,8 @@ class TestUserEditForm:
 class TestUserToggleActive:
     """Tests for user toggle active"""
 
+    # Vérifie que un admin peut désactiver un utilisateur actif.
+    # Liens : accounts:user_toggle_active, user_toggle_active dans apps/accounts/views.py
     def test_toggle_user_active(self, admin_user_with_enterprise):
         target = UserFactory(
             role='cashier',
@@ -349,6 +405,8 @@ class TestUserToggleActive:
         target.refresh_from_db()
         assert target.is_active is False
 
+    # Vérifie que un admin ne peut pas désactiver son propre compte.
+    # Liens : accounts:user_toggle_active, user_toggle_active dans apps/accounts/views.py
     def test_cannot_deactivate_self(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(
@@ -367,11 +425,15 @@ class TestUserToggleActive:
 class TestCategoryCreateForm:
     """Tests for category creation"""
 
+    # Vérifie que un admin peut afficher le formulaire de création de catégorie.
+    # Liens : products:category_create, apps/products/views.py
     def test_category_create_page_loads(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('products:category_create'))
         assert response.status_code == 200
 
+    # Vérifie que un admin crée une catégorie de produits (302).
+    # Liens : products:category_create, apps/products/views.py
     def test_create_category_success(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('products:category_create'), {
@@ -382,6 +444,8 @@ class TestCategoryCreateForm:
         assert response.status_code == 302
         assert Category.objects.filter(name='Boissons').exists()
 
+    # Vérifie que un nom vide réaffiche le formulaire sans créer de catégorie.
+    # Liens : products:category_create, apps/products/views.py
     def test_create_category_empty_name(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('products:category_create'), {
@@ -391,6 +455,8 @@ class TestCategoryCreateForm:
         assert response.status_code == 200
         assert Category.objects.count() == 0
 
+    # Vérifie que un nom déjà utilisé réaffiche le formulaire sans créer de doublon.
+    # Liens : products:category_create, apps/products/views.py
     def test_create_category_duplicate_name(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         Category.objects.create(name='Existing', enterprise=enterprise)
@@ -406,6 +472,8 @@ class TestCategoryCreateForm:
 class TestCategoryEditForm:
     """Tests for category editing"""
 
+    # Vérifie que un admin peut renommer une catégorie (302).
+    # Liens : products:category_edit, apps/products/views.py
     def test_edit_category_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(
@@ -421,6 +489,8 @@ class TestCategoryEditForm:
         category.refresh_from_db()
         assert category.name == 'New Name'
 
+    # Vérifie que omettre is_active à l'envoi désactive la catégorie.
+    # Liens : products:category_edit, apps/products/views.py
     def test_edit_category_deactivate(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(
@@ -443,11 +513,15 @@ class TestCategoryEditForm:
 class TestProductCreateForm:
     """Tests for product creation"""
 
+    # Vérifie que un admin peut afficher le formulaire de création de produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_product_create_page_loads(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('products:product_create'))
         assert response.status_code == 200
 
+    # Vérifie que un admin crée un produit avec ses prix, et une ligne de stock existe ensuite.
+    # Liens : products:product_create, apps/products/views.py, apps/stock/models.py
     def test_create_product_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Test Cat', enterprise=enterprise)
@@ -470,6 +544,8 @@ class TestProductCreateForm:
         # Verify initial stock created
         assert Stock.objects.filter(product=product).exists()
 
+    # Vérifie que un nom vide réaffiche le formulaire sans créer de produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_create_product_missing_name(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -483,6 +559,8 @@ class TestProductCreateForm:
         assert response.status_code == 200
         assert Product.objects.count() == 0
 
+    # Vérifie que une catégorie absente réaffiche le formulaire sans créer de produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_create_product_missing_category(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('products:product_create'), {
@@ -494,6 +572,8 @@ class TestProductCreateForm:
         assert response.status_code == 200
         assert Product.objects.count() == 0
 
+    # Vérifie que un prix d'achat négatif réaffiche le formulaire sans créer de produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_create_product_negative_price(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -507,6 +587,8 @@ class TestProductCreateForm:
         assert response.status_code == 200
         assert Product.objects.count() == 0
 
+    # Vérifie que le code-barres saisi est enregistré sur le produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_create_product_with_barcode(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -523,6 +605,8 @@ class TestProductCreateForm:
         product = Product.objects.get(name='Barcode Product')
         assert product.barcode == '1234567890123'
 
+    # Vérifie que un code-barres déjà utilisé réaffiche le formulaire sans créer de doublon.
+    # Liens : products:product_create, apps/products/views.py
     def test_create_product_duplicate_barcode(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -541,6 +625,8 @@ class TestProductCreateForm:
         assert response.status_code == 200
         assert Product.objects.filter(barcode='DUPE123').count() == 1
 
+    # Vérifie que un prix non numérique réaffiche le formulaire sans créer de produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_create_product_invalid_price(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -559,6 +645,8 @@ class TestProductCreateForm:
 class TestProductEditForm:
     """Tests for product editing"""
 
+    # Vérifie que un admin modifie le nom et le prix de vente d'un produit (302).
+    # Liens : products:product_edit, apps/products/views.py
     def test_edit_product_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -582,6 +670,8 @@ class TestProductEditForm:
         assert product.name == 'Updated Name'
         assert product.sale_price == 900
 
+    # Vérifie que cocher is_popular marque le produit comme populaire.
+    # Liens : products:product_edit, apps/products/views.py
     def test_edit_product_toggle_popular(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -612,11 +702,15 @@ class TestProductEditForm:
 class TestCustomerCreateForm:
     """Tests for customer creation"""
 
+    # Vérifie que un admin peut afficher le formulaire de création de client.
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_customer_create_page_loads(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('customers:customer_create'))
         assert response.status_code == 200
 
+    # Vérifie que un admin crée un client avec téléphone et limite de crédit (302).
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_create_customer_success(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('customers:customer_create'), {
@@ -632,6 +726,8 @@ class TestCustomerCreateForm:
         assert customer.phone == '+225 07 08 09 10'
         assert customer.credit_limit == Decimal('50000')
 
+    # Vérifie que un client peut être créé avec son seul nom (302).
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_create_customer_name_only(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('customers:customer_create'), {
@@ -640,6 +736,8 @@ class TestCustomerCreateForm:
         assert response.status_code == 302
         assert Customer.objects.filter(name='Simple Customer').exists()
 
+    # Vérifie que un nom vide réaffiche le formulaire sans créer de client.
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_create_customer_missing_name(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('customers:customer_create'), {
@@ -649,6 +747,8 @@ class TestCustomerCreateForm:
         assert response.status_code == 200
         assert Customer.objects.count() == 0
 
+    # Vérifie que un téléphone déjà utilisé réaffiche le formulaire (200).
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_create_customer_duplicate_phone(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         Customer.objects.create(
@@ -662,6 +762,8 @@ class TestCustomerCreateForm:
         })
         assert response.status_code == 200
 
+    # Vérifie que une limite de crédit négative réaffiche le formulaire sans créer de client.
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_create_customer_negative_credit_limit(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('customers:customer_create'), {
@@ -671,6 +773,8 @@ class TestCustomerCreateForm:
         assert response.status_code == 200
         assert Customer.objects.count() == 0
 
+    # Vérifie que un caissier a le droit de créer un client (302).
+    # Liens : customers:customer_create, customer_create dans apps/customers/views.py
     def test_cashier_can_create_customer(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.post(reverse('customers:customer_create'), {
@@ -684,6 +788,8 @@ class TestCustomerCreateForm:
 class TestCustomerEditForm:
     """Tests for customer editing"""
 
+    # Vérifie que un admin modifie le nom et la limite de crédit d'un client (302).
+    # Liens : customers:customer_edit, apps/customers/views.py
     def test_edit_customer_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         customer = Customer.objects.create(
@@ -701,6 +807,8 @@ class TestCustomerEditForm:
         assert customer.name == 'Updated Name'
         assert customer.credit_limit == Decimal('100000')
 
+    # Vérifie que omettre is_active à l'envoi désactive le client.
+    # Liens : customers:customer_edit, apps/customers/views.py
     def test_edit_customer_deactivate(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         customer = Customer.objects.create(
@@ -725,6 +833,8 @@ class TestCustomerEditForm:
 class TestRecordPaymentForm:
     """Tests for recording credit payments"""
 
+    # Prépare un client et son crédit, créé par le signal d'une vente à crédit, puis ajuste solde et statut.
+    # Liens : apps/pos/signals.py, modèle CustomerCredit de apps/customers/models.py
     def _create_credit(self, user, enterprise, remaining=Decimal('50000'), status='pending'):
         """Helper to create a customer credit with required sale.
         Uses 'credit' payment method which triggers signal to auto-create CustomerCredit.
@@ -753,6 +863,8 @@ class TestRecordPaymentForm:
             credit.save()
         return customer, credit
 
+    # Vérifie que le formulaire de paiement d'un crédit s'affiche (200).
+    # Liens : customers:record_payment, record_payment dans apps/customers/views.py
     def test_payment_page_loads(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         _, credit = self._create_credit(admin_user_with_enterprise, enterprise)
@@ -760,6 +872,8 @@ class TestRecordPaymentForm:
         response = client.get(reverse('customers:record_payment', args=[credit.pk]))
         assert response.status_code == 200
 
+    # Vérifie que un paiement partiel valide crée un CreditPayment du bon montant.
+    # Liens : customers:record_payment, record_payment dans apps/customers/views.py
     def test_record_payment_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         _, credit = self._create_credit(admin_user_with_enterprise, enterprise)
@@ -775,6 +889,8 @@ class TestRecordPaymentForm:
         payment = CreditPayment.objects.get(credit=credit)
         assert payment.amount == Decimal('25000')
 
+    # Vérifie que un montant de zéro réaffiche le formulaire sans créer de paiement.
+    # Liens : customers:record_payment, record_payment dans apps/customers/views.py
     def test_record_payment_zero_amount(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         _, credit = self._create_credit(admin_user_with_enterprise, enterprise)
@@ -786,6 +902,8 @@ class TestRecordPaymentForm:
         assert response.status_code == 200
         assert CreditPayment.objects.count() == 0
 
+    # Vérifie que un montant supérieur au solde restant est refusé sans créer de paiement.
+    # Liens : customers:record_payment, record_payment dans apps/customers/views.py
     def test_record_payment_exceeds_remaining(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         _, credit = self._create_credit(
@@ -800,6 +918,8 @@ class TestRecordPaymentForm:
         assert response.status_code == 200
         assert CreditPayment.objects.count() == 0
 
+    # Vérifie que ouvrir le paiement d'un crédit déjà soldé redirige (302).
+    # Liens : customers:record_payment, record_payment dans apps/customers/views.py
     def test_record_payment_already_paid(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         _, credit = self._create_credit(
@@ -819,11 +939,15 @@ class TestRecordPaymentForm:
 class TestPOSCreateSaleForm:
     """Tests for POS sale creation (AJAX)"""
 
+    # Vérifie que un caissier peut afficher l'écran de caisse POS (200).
+    # Liens : pos:cashier, cashier_view dans apps/pos/views_frontend.py
     def test_cashier_view_loads(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('pos:cashier'))
         assert response.status_code == 200
 
+    # Vérifie que une vente JSON valide est créée avec son total et sa ligne d'article.
+    # Liens : pos:create_sale, create_sale_view dans apps/pos/views_frontend.py
     def test_create_sale_success(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         category = Category.objects.create(name='Drinks', enterprise=enterprise)
@@ -867,6 +991,8 @@ class TestPOSCreateSaleForm:
         assert sale.total_amount == Decimal('2500')
         assert SaleItem.objects.filter(sale=sale).count() == 1
 
+    # Vérifie que une vente sans article répond 200 ; seul le code de réponse est contrôlé.
+    # Liens : pos:create_sale, create_sale_view dans apps/pos/views_frontend.py
     def test_create_sale_no_items(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         data = {
@@ -885,6 +1011,8 @@ class TestPOSCreateSaleForm:
         assert response.status_code == 200
         # Sale may be created with no items (this is a known behavior)
 
+    # Vérifie que une vente avec un produit inexistant répond 400.
+    # Liens : pos:create_sale, create_sale_view dans apps/pos/views_frontend.py
     def test_create_sale_invalid_product(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         data = {
@@ -909,6 +1037,8 @@ class TestPOSCreateSaleForm:
         )
         assert response.status_code == 400
 
+    # Vérifie que une vente à crédit pour un client avec limite répond success=True.
+    # Liens : pos:create_sale, create_sale_view dans apps/pos/views_frontend.py
     def test_create_sale_credit_payment(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         category = Category.objects.create(name='Food', enterprise=enterprise)
@@ -947,11 +1077,15 @@ class TestPOSCreateSaleForm:
         assert response.status_code == 200
         assert response.json()['success'] is True
 
+    # Vérifie que une requête GET sur la création de vente répond 405.
+    # Liens : pos:create_sale, create_sale_view dans apps/pos/views_frontend.py
     def test_create_sale_get_not_allowed(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('pos:create_sale'))
         assert response.status_code == 405
 
+    # Vérifie que un admin est redirigé hors de l'écran de caisse POS (302).
+    # Liens : pos:cashier, cashier_view dans apps/pos/views_frontend.py
     def test_admin_cannot_access_cashier_view(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('pos:cashier'))
@@ -962,6 +1096,8 @@ class TestPOSCreateSaleForm:
 class TestPOSCreateCustomerForm:
     """Tests for POS inline customer creation (AJAX)"""
 
+    # Vérifie que un caissier crée un client depuis le POS et reçoit son nom en JSON.
+    # Liens : pos:create_customer, create_customer_view dans apps/pos/views_frontend.py
     def test_create_customer_from_pos(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         data = {
@@ -979,6 +1115,8 @@ class TestPOSCreateCustomerForm:
         assert result['customer_name'] == 'Quick Customer'
         assert Customer.objects.filter(name='Quick Customer').exists()
 
+    # Vérifie que créer un client au POS sans nom répond 400.
+    # Liens : pos:create_customer, create_customer_view dans apps/pos/views_frontend.py
     def test_create_customer_missing_name(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         data = {'name': '', 'phone': '123'}
@@ -998,11 +1136,15 @@ class TestPOSCreateCustomerForm:
 class TestStockEntryForm:
     """Tests for stock entry form"""
 
+    # Vérifie que un stock_manager peut afficher le formulaire d'entrée de stock.
+    # Liens : stock:entry, entry_view dans apps/stock/views_frontend.py
     def test_stock_entry_page_loads(self, stock_manager_user_with_enterprise):
         client = login_client(stock_manager_user_with_enterprise)
         response = client.get(reverse('stock:entry'))
         assert response.status_code == 200
 
+    # Vérifie que une entrée crée un mouvement 'entry' et augmente la quantité en stock.
+    # Liens : stock:entry, entry_view dans apps/stock/views_frontend.py, apps/stock/models.py
     def test_stock_entry_success(self, stock_manager_user_with_enterprise):
         enterprise = stock_manager_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1037,6 +1179,8 @@ class TestStockEntryForm:
         stock = Stock.objects.get(product=product)
         assert stock.quantity == Decimal('50')
 
+    # Vérifie que l'emplacement choisi est enregistré sur le mouvement de stock.
+    # Liens : stock:entry, entry_view dans apps/stock/views_frontend.py
     def test_stock_entry_with_location(self, stock_manager_user_with_enterprise, location_warehouse):
         enterprise = stock_manager_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1055,6 +1199,8 @@ class TestStockEntryForm:
         movement = StockMovement.objects.get(product=product)
         assert movement.location == location_warehouse
 
+    # Vérifie que un produit inexistant réaffiche le formulaire d'entrée (200).
+    # Liens : stock:entry, entry_view dans apps/stock/views_frontend.py
     def test_stock_entry_invalid_product(self, stock_manager_user_with_enterprise):
         client = login_client(stock_manager_user_with_enterprise)
         response = client.post(reverse('stock:entry'), {
@@ -1064,6 +1210,8 @@ class TestStockEntryForm:
         })
         assert response.status_code == 200  # Re-renders with error
 
+    # Vérifie que un caissier est redirigé hors du formulaire d'entrée de stock.
+    # Liens : stock:entry, entry_view dans apps/stock/views_frontend.py
     def test_cashier_cannot_access_stock_entry(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('stock:entry'))
@@ -1078,6 +1226,8 @@ class TestStockEntryForm:
 class TestExpenseCategoryForms:
     """Tests for expense category create/edit"""
 
+    # Vérifie que un admin crée une catégorie de dépenses (302).
+    # Liens : accounting:expense_category_create, apps/accounting/views.py
     def test_create_expense_category_success(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounting:expense_category_create'), {
@@ -1087,6 +1237,8 @@ class TestExpenseCategoryForms:
         assert response.status_code == 302
         assert ExpenseCategory.objects.filter(name='Transport').exists()
 
+    # Vérifie que un nom vide réaffiche le formulaire sans créer de catégorie de dépenses.
+    # Liens : accounting:expense_category_create, apps/accounting/views.py
     def test_create_expense_category_empty_name(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounting:expense_category_create'), {
@@ -1095,6 +1247,8 @@ class TestExpenseCategoryForms:
         assert response.status_code == 200
         assert ExpenseCategory.objects.count() == 0
 
+    # Vérifie que un nom déjà utilisé réaffiche le formulaire sans créer de doublon.
+    # Liens : accounting:expense_category_create, apps/accounting/views.py
     def test_create_expense_category_duplicate(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         ExpenseCategory.objects.create(name='Loyer', enterprise=enterprise)
@@ -1105,6 +1259,8 @@ class TestExpenseCategoryForms:
         assert response.status_code == 200
         assert ExpenseCategory.objects.filter(name='Loyer').count() == 1
 
+    # Vérifie que un admin peut renommer une catégorie de dépenses (302).
+    # Liens : accounting:expense_category_edit, apps/accounting/views.py
     def test_edit_expense_category_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = ExpenseCategory.objects.create(
@@ -1131,11 +1287,15 @@ class TestExpenseCategoryForms:
 class TestExpenseCreateForm:
     """Tests for expense creation"""
 
+    # Vérifie que un admin peut afficher le formulaire de création de dépense.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_expense_create_page_loads(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('accounting:expense_create'))
         assert response.status_code == 200
 
+    # Vérifie que un admin crée une dépense avec le bon montant et la bonne description.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_create_expense_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         exp_cat = ExpenseCategory.objects.create(
@@ -1156,6 +1316,8 @@ class TestExpenseCreateForm:
         assert expense.amount == Decimal('75000')
         assert expense.description == 'Facture électricité janvier'
 
+    # Vérifie que une description vide réaffiche le formulaire sans créer de dépense.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_create_expense_missing_description(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounting:expense_create'), {
@@ -1167,6 +1329,8 @@ class TestExpenseCreateForm:
         assert response.status_code == 200
         assert Expense.objects.count() == 0
 
+    # Vérifie que un montant de zéro réaffiche le formulaire sans créer de dépense.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_create_expense_zero_amount(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounting:expense_create'), {
@@ -1178,6 +1342,8 @@ class TestExpenseCreateForm:
         assert response.status_code == 200
         assert Expense.objects.count() == 0
 
+    # Vérifie que une date vide réaffiche le formulaire sans créer de dépense.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_create_expense_missing_date(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounting:expense_create'), {
@@ -1189,6 +1355,8 @@ class TestExpenseCreateForm:
         assert response.status_code == 200
         assert Expense.objects.count() == 0
 
+    # Vérifie que cocher is_recurring enregistre la dépense comme récurrente.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_create_expense_with_recurring(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('accounting:expense_create'), {
@@ -1207,6 +1375,8 @@ class TestExpenseCreateForm:
 class TestExpenseEditForm:
     """Tests for expense editing"""
 
+    # Vérifie que un admin modifie la description et le montant d'une dépense (302).
+    # Liens : accounting:expense_edit, apps/accounting/views.py
     def test_edit_expense_success(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         expense = Expense.objects.create(
@@ -1238,11 +1408,15 @@ class TestExpenseEditForm:
 class TestCashSessionOpenForm:
     """Tests for opening cash register session"""
 
+    # Vérifie que un caissier peut afficher le formulaire d'ouverture de caisse.
+    # Liens : accounting:cash_session_open, cash_session_open dans apps/accounting/views.py
     def test_cash_session_open_page_loads(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('accounting:cash_session_open'))
         assert response.status_code == 200
 
+    # Vérifie que l'ouverture crée une session 'open' avec le solde saisi et le caissier.
+    # Liens : accounting:cash_session_open, cash_session_open dans apps/accounting/views.py
     def test_open_session_success(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.post(reverse('accounting:cash_session_open'), {
@@ -1255,6 +1429,8 @@ class TestCashSessionOpenForm:
         assert session.status == 'open'
         assert session.user == cashier_user_with_enterprise
 
+    # Vérifie que une session peut être ouverte avec un solde initial de zéro.
+    # Liens : accounting:cash_session_open, cash_session_open dans apps/accounting/views.py
     def test_open_session_zero_balance(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.post(reverse('accounting:cash_session_open'), {
@@ -1263,6 +1439,8 @@ class TestCashSessionOpenForm:
         assert response.status_code == 302
         assert CashRegisterSession.objects.count() == 1
 
+    # Vérifie que un solde initial négatif réaffiche le formulaire sans créer de session.
+    # Liens : accounting:cash_session_open, cash_session_open dans apps/accounting/views.py
     def test_open_session_negative_balance(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.post(reverse('accounting:cash_session_open'), {
@@ -1271,6 +1449,8 @@ class TestCashSessionOpenForm:
         assert response.status_code == 200
         assert CashRegisterSession.objects.count() == 0
 
+    # Vérifie que un caissier ayant déjà une session ouverte est redirigé (302).
+    # Liens : accounting:cash_session_open, cash_session_open dans apps/accounting/views.py
     def test_cannot_open_duplicate_session(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         CashRegisterSession.objects.create(
@@ -1284,6 +1464,8 @@ class TestCashSessionOpenForm:
         response = client.get(reverse('accounting:cash_session_open'))
         assert response.status_code == 302  # Redirected to existing session
 
+    # Vérifie que l'emplacement choisi est enregistré sur la session de caisse.
+    # Liens : accounting:cash_session_open, cash_session_open dans apps/accounting/views.py
     def test_open_session_with_location(self, cashier_user_with_enterprise, location_boutique):
         client = login_client(cashier_user_with_enterprise)
         response = client.post(reverse('accounting:cash_session_open'), {
@@ -1299,6 +1481,8 @@ class TestCashSessionOpenForm:
 class TestCashSessionCloseForm:
     """Tests for closing cash register session"""
 
+    # Vérifie que la fermeture passe la session à 'closed' et calcule l'écart de caisse.
+    # Liens : accounting:cash_session_close, cash_session_close dans apps/accounting/views.py
     def test_close_session_success(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         session = CashRegisterSession.objects.create(
@@ -1319,6 +1503,8 @@ class TestCashSessionCloseForm:
         assert session.closing_balance == Decimal('85000')
         assert session.difference == Decimal('60000')  # 85000 - 25000
 
+    # Vérifie que un solde final négatif réaffiche le formulaire et laisse la session ouverte.
+    # Liens : accounting:cash_session_close, cash_session_close dans apps/accounting/views.py
     def test_close_session_negative_balance(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         session = CashRegisterSession.objects.create(
@@ -1336,6 +1522,8 @@ class TestCashSessionCloseForm:
         session.refresh_from_db()
         assert session.status == 'open'  # Not closed
 
+    # Vérifie que ouvrir la fermeture d'une session déjà fermée redirige (302).
+    # Liens : accounting:cash_session_close, cash_session_close dans apps/accounting/views.py
     def test_close_already_closed_session(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         session = CashRegisterSession.objects.create(
@@ -1359,11 +1547,15 @@ class TestCashSessionCloseForm:
 class TestTransferCreateForm:
     """Tests for transfer creation"""
 
+    # Vérifie que un admin peut afficher le formulaire de création de transfert.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_transfer_create_page_loads(self, admin_user_with_enterprise):
         client = login_client(admin_user_with_enterprise)
         response = client.get(reverse('transfers:create'))
         assert response.status_code == 200
 
+    # Vérifie que un transfert valide est créé en brouillon avec sa source, destination et ligne.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_create_transfer_success(self, admin_user_with_enterprise, location_warehouse, location_boutique):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1390,6 +1582,8 @@ class TestTransferCreateForm:
         assert transfer.status == 'draft'
         assert TransferItem.objects.filter(transfer=transfer).count() == 1
 
+    # Vérifie que une quantité supérieure au stock source est refusée avec 'Stock insuffisant'.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_create_transfer_quantity_exceeds_source_stock(self, admin_user_with_enterprise, location_warehouse, location_boutique):
         """A transfer requesting more than the source's available stock is rejected."""
         enterprise = admin_user_with_enterprise.enterprise
@@ -1413,6 +1607,8 @@ class TestTransferCreateForm:
         messages = [str(m) for m in response.context['messages']]
         assert any('Stock insuffisant' in m for m in messages)
 
+    # Vérifie que un produit sans stock à la source est refusé avec 'Stock insuffisant'.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_create_transfer_no_stock_at_source(self, admin_user_with_enterprise, location_warehouse, location_boutique):
         """A product with no stock row at the source cannot be transferred."""
         enterprise = admin_user_with_enterprise.enterprise
@@ -1433,6 +1629,8 @@ class TestTransferCreateForm:
         messages = [str(m) for m in response.context['messages']]
         assert any('Stock insuffisant' in m for m in messages)
 
+    # Vérifie que une source identique à la destination redirige sans créer de transfert.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_create_transfer_same_location(self, admin_user_with_enterprise, location_warehouse):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1450,6 +1648,8 @@ class TestTransferCreateForm:
         assert response.status_code == 302  # Redirected with error
         assert Transfer.objects.count() == 0
 
+    # Vérifie que un transfert sans article redirige sans rien créer.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_create_transfer_no_items(self, admin_user_with_enterprise, location_warehouse, location_boutique):
         client = login_client(admin_user_with_enterprise)
         response = client.post(reverse('transfers:create'), {
@@ -1461,6 +1661,8 @@ class TestTransferCreateForm:
         assert response.status_code == 302  # Redirected with error
         assert Transfer.objects.count() == 0
 
+    # Vérifie que un transfert avec deux produits crée deux lignes TransferItem.
+    # Liens : transfers:create, transfer_create dans apps/transfers/views.py
     def test_create_transfer_multiple_items(
         self, admin_user_with_enterprise, location_warehouse, location_boutique,
     ):
@@ -1492,6 +1694,8 @@ class TestTransferCreateForm:
 class TestTransferSendForm:
     """Tests for sending a transfer"""
 
+    # Vérifie que l'envoi passe le transfert 'in_transit' et déduit le stock de la source.
+    # Liens : transfers:send, transfer_send dans apps/transfers/views.py
     def test_send_transfer_success(self, admin_user_with_enterprise, location_warehouse, location_boutique):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1522,6 +1726,8 @@ class TestTransferSendForm:
         loc_stock = LocationStock.objects.get(location=location_warehouse, product=product)
         assert loc_stock.quantity == Decimal('80')
 
+    # Vérifie que un stock source insuffisant laisse le transfert en brouillon.
+    # Liens : transfers:send, transfer_send dans apps/transfers/views.py
     def test_send_transfer_insufficient_stock(
         self, admin_user_with_enterprise, location_warehouse, location_boutique,
     ):
@@ -1555,6 +1761,8 @@ class TestTransferSendForm:
 class TestTransferReceiveForm:
     """Tests for receiving a transfer"""
 
+    # Vérifie que la réception passe le transfert 'received' et ajoute le stock à la destination.
+    # Liens : transfers:receive, transfer_receive dans apps/transfers/views.py
     def test_receive_transfer_success(
         self, admin_user_with_enterprise, location_warehouse, location_boutique,
     ):
@@ -1585,6 +1793,8 @@ class TestTransferReceiveForm:
         )
         assert loc_stock.quantity == Decimal('20')
 
+    # Vérifie que la quantité reçue corrigée est celle ajoutée au stock de destination.
+    # Liens : transfers:receive, transfer_receive dans apps/transfers/views.py
     def test_receive_transfer_with_adjusted_quantities(
         self, admin_user_with_enterprise, location_warehouse, location_boutique,
     ):
@@ -1621,6 +1831,8 @@ class TestTransferReceiveForm:
 class TestTransferCancelForm:
     """Tests for cancelling a transfer"""
 
+    # Vérifie que annuler un brouillon le passe 'cancelled' et enregistre le motif.
+    # Liens : transfers:cancel, transfer_cancel dans apps/transfers/views.py
     def test_cancel_draft_transfer(
         self, admin_user_with_enterprise, location_warehouse, location_boutique,
     ):
@@ -1650,6 +1862,8 @@ class TestTransferCancelForm:
 class TestProductSearchForm:
     """Tests for POS product search"""
 
+    # Vérifie que la recherche POS par texte répond 200 ; le contenu n'est pas contrôlé.
+    # Liens : pos:search_products, search_products dans apps/pos/views_frontend.py
     def test_search_products(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         category = Category.objects.create(name='Drinks', enterprise=enterprise)
@@ -1665,6 +1879,8 @@ class TestProductSearchForm:
         response = client.get(reverse('pos:search_products'), {'q': 'coca'})
         assert response.status_code == 200
 
+    # Vérifie que la recherche POS par catégorie répond 200 ; le contenu n'est pas contrôlé.
+    # Liens : pos:search_products, search_products dans apps/pos/views_frontend.py
     def test_search_products_by_category(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         cat1 = Category.objects.create(name='Drinks', enterprise=enterprise)
@@ -1684,6 +1900,8 @@ class TestProductSearchForm:
         )
         assert response.status_code == 200
 
+    # Vérifie que la recherche POS par code-barres répond 200 ; le contenu n'est pas contrôlé.
+    # Liens : pos:search_products, search_products dans apps/pos/views_frontend.py
     def test_search_by_barcode(self, cashier_user_with_enterprise):
         enterprise = cashier_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1708,6 +1926,8 @@ class TestProductSearchForm:
 class TestDeleteAndToggleForms:
     """Tests for deletion and toggle forms"""
 
+    # Vérifie que l'action de bascule désactive un produit actif.
+    # Liens : products:product_toggle, product_toggle dans apps/products/views.py
     def test_toggle_product_active(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1722,6 +1942,8 @@ class TestDeleteAndToggleForms:
         product.refresh_from_db()
         assert product.is_active is False
 
+    # Vérifie que l'action de bascule désactive une catégorie active.
+    # Liens : products:category_toggle, category_toggle dans apps/products/views.py
     def test_toggle_category_active(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(
@@ -1733,6 +1955,8 @@ class TestDeleteAndToggleForms:
         category.refresh_from_db()
         assert category.is_active is False
 
+    # Vérifie que l'action de bascule désactive un client actif.
+    # Liens : customers:customer_toggle, customer_toggle dans apps/customers/views.py
     def test_toggle_customer_active(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         customer = Customer.objects.create(
@@ -1744,6 +1968,8 @@ class TestDeleteAndToggleForms:
         customer.refresh_from_db()
         assert customer.is_active is False
 
+    # Vérifie que un produit sans historique est réellement supprimé.
+    # Liens : products:product_delete, apps/products/views.py
     def test_delete_product_no_history(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -1756,6 +1982,8 @@ class TestDeleteAndToggleForms:
         assert response.status_code == 302
         assert not Product.objects.filter(pk=product.pk).exists()
 
+    # Vérifie que une catégorie contenant des produits n'est pas supprimée.
+    # Liens : products:category_delete, apps/products/views.py
     def test_delete_category_with_products_blocked(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         category = Category.objects.create(name='Has Products', enterprise=enterprise)
@@ -1768,6 +1996,8 @@ class TestDeleteAndToggleForms:
         assert response.status_code == 302
         assert Category.objects.filter(pk=category.pk).exists()  # Not deleted
 
+    # Vérifie que une dépense est supprimée par l'action de suppression.
+    # Liens : accounting:expense_delete, expense_delete dans apps/accounting/views.py
     def test_delete_expense(self, admin_user_with_enterprise):
         enterprise = admin_user_with_enterprise.enterprise
         expense = Expense.objects.create(
@@ -1792,6 +2022,8 @@ class TestDeleteAndToggleForms:
 class TestFormAccessControl:
     """Tests that forms enforce role-based access"""
 
+    # Vérifie que un visiteur non connecté est redirigé (302) sur quatre formulaires protégés.
+    # Liens : products:product_create, customers:customer_create, accounting:expense_create, accounts:user_create
     def test_unauthenticated_redirects_to_login(self):
         client = Client()
         protected_urls = [
@@ -1804,21 +2036,29 @@ class TestFormAccessControl:
             response = client.get(url)
             assert response.status_code == 302, f"URL {url} not protected"
 
+    # Vérifie que un comptable est redirigé hors du formulaire de création de produit.
+    # Liens : products:product_create, apps/products/views.py
     def test_accountant_cannot_create_products(self, accountant_user_with_enterprise):
         client = login_client(accountant_user_with_enterprise)
         response = client.get(reverse('products:product_create'))
         assert response.status_code == 302  # Redirected
 
+    # Vérifie que un caissier est redirigé hors du formulaire de création d'utilisateur.
+    # Liens : accounts:user_create, user_create dans apps/accounts/views.py
     def test_cashier_cannot_create_users(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('accounts:user_create'))
         assert response.status_code == 302
 
+    # Vérifie que un caissier est redirigé hors du formulaire de création de dépense.
+    # Liens : accounting:expense_create, expense_create dans apps/accounting/views.py
     def test_cashier_cannot_create_expenses(self, cashier_user_with_enterprise):
         client = login_client(cashier_user_with_enterprise)
         response = client.get(reverse('accounting:expense_create'))
         assert response.status_code == 302
 
+    # Vérifie que un stock_manager est redirigé hors de l'écran de caisse POS.
+    # Liens : pos:cashier, cashier_view dans apps/pos/views_frontend.py
     def test_stock_manager_cannot_access_pos(self, stock_manager_user_with_enterprise):
         client = login_client(stock_manager_user_with_enterprise)
         response = client.get(reverse('pos:cashier'))

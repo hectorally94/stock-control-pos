@@ -15,6 +15,8 @@ from apps.accounts.models import User, ActionLog
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Custom JWT serializer to include user role in token"""
     
+    # Rôle : ajoute role, username et email dans le contenu du JWT généré par SimpleJWT.
+    # Liens : appelée par SimpleJWT pendant validate() ; lit les champs de User (apps/accounts/models.py).
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -26,6 +28,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return token
     
+    # Rôle : après vérification des identifiants, ajoute un bloc user (id, nom, rôle...) à la réponse des tokens.
+    # Liens : appelée par DRF depuis CustomTokenObtainPairView.post() ; route POST /api/v1/auth/login/.
     def validate(self, attrs):
         data = super().validate(attrs)
         
@@ -46,6 +50,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom login view with action logging"""
     serializer_class = CustomTokenObtainPairSerializer
     
+    # Rôle : connecte via SimpleJWT ; sur réponse 200, journalise le login (avec IP) et met à jour last_login.
+    # Liens : route POST /api/v1/auth/login/ (api/v1/auth/urls.py) ; crée un ActionLog (apps/accounts/models.py).
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         
@@ -81,6 +87,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         return response
 
 
+# Rôle : avec JWT et refresh_token valides, invalide ce token et journalise ; sans JWT, redirige vers login.
+# Liens : route /api/v1/auth/logout/ ; {% url 'logout' %} de templates/base.html y mène aussi (nom dupliqué).
+# La branche session (django_logout) exige un user sans token, or stock_control/settings.py n'active que le JWT.
 @api_view(['POST', 'GET'])
 @permission_classes([AllowAny])
 def logout_view(request):
@@ -156,6 +165,8 @@ def logout_view(request):
         )
 
 
+# Rôle : renvoie le profil complet de l'utilisateur identifié par son JWT, y compris rôle et statuts.
+# Liens : route GET /api/v1/auth/me/ (api/v1/auth/urls.py) ; lit User (apps/accounts/models.py).
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def current_user_view(request):
@@ -182,6 +193,8 @@ def current_user_view(request):
     })
 
 
+# Rôle : indique le nom de l'utilisateur reconnu par le token, ou Anonymous si aucun token n'est reconnu.
+# Liens : route POST /api/v1/auth/test/ (api/v1/auth/urls.py) ; aucun modèle modifié.
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def test_token_view(request):

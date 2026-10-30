@@ -18,6 +18,8 @@ from apps.customers.models import CreditPayment
 class Command(BaseCommand):
     help = 'Generate or update daily summary for sales, expenses, and profits'
 
+    # Rôle : déclare les options --date et --backfill (début et fin), au format YYYY-MM-DD.
+    # Liens : appelée par Django au lancement de la commande ; valeurs lues par Command.handle.
     def add_arguments(self, parser):
         parser.add_argument(
             '--date',
@@ -31,6 +33,8 @@ class Command(BaseCommand):
             help='Generate summaries for a date range (YYYY-MM-DD YYYY-MM-DD)',
         )
 
+    # Rôle : choisit les jours (--backfill, --date, sinon hier) ; en backfill, une erreur n'arrête pas la boucle.
+    # Liens : lancée par python manage.py generate_daily_summary ; appelle generate_summary_for_date par jour.
     def handle(self, *args, **options):
         """Main command handler"""
         
@@ -85,6 +89,9 @@ class Command(BaseCommand):
             yesterday = (timezone.now() - timedelta(days=1)).date()
             self.generate_summary_for_date(yesterday)
 
+    # Rôle : calcule ventes par paiement, coût, dépenses et bénéfices d'un jour, toutes entreprises confondues.
+    # Liens : lit Sale et SaleItem (apps/pos/models.py), CreditPayment (apps/customers/models.py) et Expense.
+    # Écrit DailySummary (apps/accounting/models.py), servi par la route API /api/v1/daily-summaries/.
     def generate_summary_for_date(self, summary_date):
         """Generate summary for a specific date"""
         
@@ -195,6 +202,7 @@ class Command(BaseCommand):
         
         self.stdout.write('')  # Empty line for readability
     
+    # Rôle : formate un montant en « 12 500 FB » pour la console ; utilisée seulement par cette commande.
     def _format_currency(self, amount):
         """Format amount as FB currency"""
         return f'{amount:,.0f} FB'.replace(',', ' ')

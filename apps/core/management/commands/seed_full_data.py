@@ -23,6 +23,8 @@ User = get_user_model()
 class Command(BaseCommand):
     help = 'Generate comprehensive seed data for testing all dashboards'
 
+    # Rôle : déclare l'option --clear, qui vide les données avant de générer la démonstration.
+    # Liens : appelée par Django pour « python manage.py seed_full_data » ; option lue dans Command.handle.
     def add_arguments(self, parser):
         parser.add_argument(
             '--clear',
@@ -30,6 +32,8 @@ class Command(BaseCommand):
             help='Clear existing data before seeding',
         )
 
+    # Rôle : enchaîne toutes les créations dans une transaction, puis affiche les comptes de test.
+    # Liens : lancée par « python manage.py seed_full_data » ; appelle les méthodes create_* de ce fichier.
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('\n' + '=' * 60))
         self.stdout.write(self.style.SUCCESS('   STOCK CONTROL & POS - COMPREHENSIVE DATA SEEDING'))
@@ -57,6 +61,8 @@ class Command(BaseCommand):
 
         self.print_login_credentials(users)
 
+    # Rôle : supprime ventes, crédits, transferts, stock, dépenses, clients et catalogue, enfants d'abord.
+    # Liens : appelée par Command.handle avec --clear ; conserve entreprises, emplacements et utilisateurs.
     def clear_data(self):
         """Clear existing data"""
         self.stdout.write('Clearing existing data...')
@@ -87,6 +93,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('  Data cleared!'))
 
+    # Rôle : récupère ou crée l'entreprise de démonstration de code CGM-001.
+    # Liens : appelée par Command.handle ; écrit dans Enterprise (apps/core/models.py).
     def create_enterprise(self):
         """Create or get the main enterprise"""
         self.stdout.write('\n[1/10] Creating Enterprise...')
@@ -107,6 +115,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'  {action} enterprise: {enterprise.name}'))
         return enterprise
 
+    # Rôle : crée le dépôt central et trois boutiques, renvoyés dans un dictionnaire indexé par code.
+    # Liens : appelée par Command.handle ; écrit dans Location (apps/locations/models.py).
     def create_locations(self, enterprise):
         """Create warehouse and boutiques"""
         self.stdout.write('\n[2/10] Creating Locations...')
@@ -160,6 +170,8 @@ class Command(BaseCommand):
 
         return locations
 
+    # Rôle : crée les comptes de démo de chaque rôle, rattachés à l'entreprise et à leur emplacement.
+    # Liens : appelée par Command.handle ; écrit dans User (apps/accounts/models.py).
     def create_users(self, enterprise, locations):
         """Create users with different roles"""
         self.stdout.write('\n[3/10] Creating Users...')
@@ -296,6 +308,8 @@ class Command(BaseCommand):
 
         return users
 
+    # Rôle : crée dix catégories de produits pour l'entreprise, sans doublon.
+    # Liens : appelée par Command.handle ; écrit dans Category (apps/products/models.py).
     def create_categories(self, enterprise):
         """Create product categories"""
         self.stdout.write('\n[4/10] Creating Categories...')
@@ -327,6 +341,8 @@ class Command(BaseCommand):
 
         return categories
 
+    # Rôle : crée les produits de démonstration (prix, unité, seuil aléatoire) rattachés aux catégories existantes.
+    # Liens : appelée par Command.handle ; écrit dans Product (apps/products/models.py).
     def create_products(self, enterprise, categories):
         """Create products with realistic prices"""
         self.stdout.write('\n[5/10] Creating Products (80 products)...')
@@ -457,6 +473,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'  Created/Found {len(products)} products'))
         return products
 
+    # Rôle : crée au dépôt un Stock de 50 à 500 unités et un mouvement d'entrée pour chaque nouveau produit.
+    # Liens : appelée par Command.handle ; StockMovement.save() (apps/stock/models.py) ajoute aussi la quantité.
     def create_initial_stock(self, enterprise, locations, products, users):
         """Create initial stock in warehouse"""
         self.stdout.write('\n[6/10] Creating Initial Stock in Warehouse...')
@@ -492,6 +510,9 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'  Created stock for {len(products)} products in warehouse'))
 
+    # Rôle : crée sur 30 jours des transferts déjà reçus et une entrée de stock par article en boutique.
+    # Liens : appelée par Command.handle ; écrit Transfer et TransferItem (apps/transfers/models.py).
+    # Augmente Stock directement, puis StockMovement.save() ajoute aussi la quantité ; aucune sortie au dépôt.
     def create_transfers(self, enterprise, locations, products, users):
         """Create transfers from warehouse to boutiques"""
         self.stdout.write('\n[7/10] Creating Transfers to Boutiques...')
@@ -567,6 +588,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'  Created {transfer_count} transfers'))
 
+    # Rôle : génère 120 clients aléatoires, dédoublonnés par entreprise et téléphone.
+    # Liens : appelée par Command.handle ; écrit dans Customer (apps/customers/models.py).
     def create_customers(self, enterprise):
         """Create customers"""
         self.stdout.write('\n[8/10] Creating Customers (120 customers)...')
@@ -609,6 +632,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'  Created/Found {len(customers)} customers'))
         return customers
 
+    # Rôle : génère 60 jours de ventes par boutique, réécrit created_at, baisse Stock et met à jour le client.
+    # Liens : appelée par Command.handle ; écrit Sale et SaleItem (apps/pos/models.py).
+    # Déclenche aussi apps/pos/signals.py (mouvements de sortie) et apps/customers/signals.py (statistiques).
     def create_sales(self, enterprise, locations, products, customers, users):
         """Create sales transactions over the past 60 days"""
         self.stdout.write('\n[9/10] Creating Sales (100+ per boutique)...')
@@ -735,6 +761,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'  Created {total_sales} sales across all boutiques'))
 
+    # Rôle : crée les catégories de dépenses, loyers et électricité sur 3 mois, et des dépenses aléatoires.
+    # Liens : appelée par Command.handle ; écrit ExpenseCategory et Expense (apps/accounting/models.py).
     def create_expenses(self, enterprise, locations, users):
         """Create expenses"""
         self.stdout.write('\n[10/10] Creating Expenses...')
@@ -821,6 +849,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'  Created {expense_count} expenses'))
 
+    # Rôle : calcule par boutique et par jour, sur 30 jours, les ventes et dépenses des jours avec activité.
+    # Liens : appelée par Command.handle ; lit Sale et Expense, écrit DailySummary (apps/accounting/models.py).
     def create_daily_summaries(self, enterprise, locations):
         """Generate daily summaries for past 30 days"""
         self.stdout.write('\nGenerating Daily Summaries...')
@@ -870,6 +900,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('  Daily summaries generated'))
 
+    # Rôle : affiche dans le terminal le tableau des comptes de test créés.
+    # Liens : appelée à la fin de Command.handle, hors de la transaction.
     def print_login_credentials(self, users):
         """Print login credentials for testing"""
         self.stdout.write('\n' + '=' * 60)

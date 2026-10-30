@@ -13,6 +13,8 @@ from django.utils import timezone
 from decimal import Decimal
 
 
+# Rôle : formate un montant en texte sans décimales, avec espace pour les milliers et suffixe FB.
+# Liens : utilisée seulement par sales_report dans ce fichier.
 def format_currency(value):
     """Format as FB currency"""
     try:
@@ -21,6 +23,8 @@ def format_currency(value):
         return f"{value} FB"
 
 
+# Rôle : applique le style d'en-tête (gras blanc, fond bleu, centré, bordures) à une ligne de feuille.
+# Liens : appelée par les quatre rapports de ce fichier.
 def apply_header_style(worksheet, row_num=1):
     """Apply header styling to a row"""
     for cell in worksheet[row_num]:
@@ -35,6 +39,8 @@ def apply_header_style(worksheet, row_num=1):
         )
 
 
+# Rôle : met une ligne de total en gras sur fond gris, avec double bordure en haut.
+# Liens : appelée par inventory_report et expense_report.
 def apply_total_row_style(worksheet, row_num):
     """Apply total row styling"""
     for cell in worksheet[row_num]:
@@ -43,6 +49,8 @@ def apply_total_row_style(worksheet, row_num):
         cell.border = Border(top=Side(style='double'))
 
 
+# Rôle : ajuste chaque colonne à son contenu le plus long, avec une largeur limitée à 50.
+# Liens : appelée par les quatre rapports de ce fichier.
 def auto_adjust_column_width(worksheet):
     """Auto-adjust column widths based on content"""
     for column in worksheet.columns:
@@ -60,6 +68,8 @@ def auto_adjust_column_width(worksheet):
         worksheet.column_dimensions[column_letter].width = adjusted_width
 
 
+# Rôle : écrit en haut de feuille le titre, le sous-titre éventuel et la date de génération.
+# Liens : appelée par sales_report, inventory_report et expense_report.
 def _report_header(ws, title, subtitle=''):
     """Standard report header: title, optional subtitle, generation stamp."""
     ws['A1'] = title
@@ -73,6 +83,9 @@ def _report_header(ws, title, subtitle=''):
     ws[f'A{row}'].font = Font(size=9, italic=True, color="777777")
 
 
+# Rôle : crée le classeur des ventes « completed » : résumé, ventes détaillées et articles vendus.
+# Liens : appelée par export_sales_report (apps/reports/views.py) ; lit Sale et SaleItem.profit
+# (apps/pos/models.py) ; filtres client, caissier, paiement et emplacement.
 def sales_report(start_date, end_date, filters=None, enterprise=None):
     """
     Generate sales report Excel workbook (scoped to the enterprise).
@@ -223,6 +236,9 @@ def sales_report(start_date, end_date, filters=None, enterprise=None):
     return wb
 
 
+# Rôle : crée le classeur d'inventaire : stock par produit, détail par emplacement, produits populaires.
+# Liens : appelée par export_inventory_report (apps/reports/views.py) ; lit Stock (apps/stock/models.py)
+# et Product (apps/products/models.py).
 def inventory_report(enterprise=None, location=None):
     """
     Generate inventory report Excel workbook (scoped to the enterprise).
@@ -372,6 +388,9 @@ def inventory_report(enterprise=None, location=None):
     return wb
 
 
+# Rôle : crée le classeur des dépenses d'une période : synthèse par catégorie et liste détaillée.
+# Liens : appelée par export_expense_report (apps/reports/views.py) ; lit Expense et ExpenseCategory
+# (apps/accounting/models.py).
 def expense_report(start_date, end_date, enterprise=None):
     """Generate expense report Excel workbook (scoped to the enterprise)."""
     from apps.accounting.models import Expense, ExpenseCategory
@@ -406,6 +425,8 @@ def expense_report(start_date, end_date, enterprise=None):
     if enterprise:
         categories = categories.filter(Q(enterprise=enterprise) | Q(enterprise__isnull=True))
 
+    # Rôle : ajoute la ligne d'une catégorie (montant, nombre, moyenne, part du total) si elle a des dépenses.
+    # Liens : fonction locale, appelée seulement par expense_report.
     def _append_summary_row(label, cat_expenses):
         count = cat_expenses.count()
         if count == 0:
@@ -463,6 +484,8 @@ def expense_report(start_date, end_date, enterprise=None):
     return wb
 
 
+# Rôle : crée le classeur clients : 100 meilleurs clients et clients ayant un solde de crédit.
+# Liens : appelée par export_customer_report (apps/reports/views.py) ; lit Customer (apps/customers/models.py).
 def customer_report(enterprise=None):
     """Generate customer report Excel workbook (scoped to the enterprise)."""
     from django.db.models import Q

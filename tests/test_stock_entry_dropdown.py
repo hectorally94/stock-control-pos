@@ -28,11 +28,15 @@ from tests.factories import UserFactory
 # Fixtures
 # ---------------------------------------------------------------------------
 
+# Prépare une entreprise de test à laquelle rattacher les données.
+# Liens : modèle Enterprise (apps/core/models.py)
 @pytest.fixture
 def enterprise():
     return Enterprise.objects.create(name='Hema Test', code='HEMATEST', currency='FB')
 
 
+# Prépare le dépôt principal de l'entreprise.
+# Liens : modèle Location (apps/locations/models.py)
 @pytest.fixture
 def warehouse(enterprise):
     return Location.objects.create(
@@ -41,22 +45,30 @@ def warehouse(enterprise):
     )
 
 
+# Prépare un utilisateur admin rattaché à l'entreprise et au dépôt.
+# Liens : UserFactory (tests/factories.py)
 @pytest.fixture
 def admin_user(enterprise, warehouse):
     return UserFactory(role='admin', enterprise=enterprise, location=warehouse)
 
 
+# Prépare un gestionnaire de stock rattaché à l'entreprise et au dépôt.
+# Liens : UserFactory (tests/factories.py)
 @pytest.fixture
 def stock_manager_user(enterprise, warehouse):
     return UserFactory(role='stock_manager', enterprise=enterprise, location=warehouse)
 
 
+# Prépare un client de test déjà connecté avec l'utilisateur donné.
+# Liens : django.test.Client, force_login
 def login(user):
     client = Client()
     client.force_login(user)
     return client
 
 
+# Prépare un produit à l'unité avec une nouvelle catégorie pour l'entreprise donnée.
+# Liens : modèles Category et Product (apps/products/models.py)
 def make_product(enterprise, name='Coca-Cola 50cl', category_name='Boissons'):
     category = Category.objects.create(name=category_name, enterprise=enterprise)
     return Product.objects.create(
@@ -73,6 +85,8 @@ def make_product(enterprise, name='Coca-Cola 50cl', category_name='Boissons'):
 @pytest.mark.django_db
 class TestSearchableDropdown:
 
+    # Vérifie que le formulaire d'entrée affiche la liste de recherche et ses données, sans l'ancien select.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_combobox_rendered_when_products_exist(self, admin_user, enterprise):
         make_product(enterprise)
         client = login(admin_user)
@@ -86,6 +100,8 @@ class TestSearchableDropdown:
         # No legacy empty <select> placeholder
         assert 'Sélectionnez un produit' not in html
 
+    # Vérifie que ?product= transmet le produit au composant Alpine et que les données contiennent le prix.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_preselected_product_via_query_param(self, admin_user, enterprise):
         product = make_product(enterprise, name='Coca 33cl')
         client = login(admin_user)
@@ -95,6 +111,8 @@ class TestSearchableDropdown:
         # Purchase price is embedded so the unit cost can auto-fill
         assert '"price"' in html
 
+    # Vérifie que la page d'entrée contient le nom du produit et le nom de sa catégorie.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_product_label_in_json_payload(self, admin_user, enterprise):
         make_product(enterprise, name='Fanta Orange 50cl', category_name='Boissons')
         client = login(admin_user)
@@ -103,6 +121,8 @@ class TestSearchableDropdown:
         assert 'Fanta Orange 50cl' in html
         assert 'Boissons' in html
 
+    # Vérifie que seuls les produits actifs de l'entreprise sont proposés (ni inactifs, ni étrangers).
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_only_active_enterprise_products_in_payload(self, admin_user, enterprise):
         make_product(enterprise, name='Visible Product')
         # Inactive product must not appear
@@ -130,6 +150,8 @@ class TestSearchableDropdown:
 @pytest.mark.django_db
 class TestEmptyState:
 
+    # Vérifie que, sans produit, la page affiche « Aucun produit disponible » et aucun formulaire.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_empty_state_shown_when_no_products(self, admin_user):
         client = login(admin_user)
         html = client.get(reverse('stock:entry')).content.decode()
@@ -137,12 +159,16 @@ class TestEmptyState:
         # No form / combobox when there is nothing to pick
         assert 'stockEntryForm(' not in html
 
+    # Vérifie que, sans produit, l'admin voit le lien « Créer un produit ».
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py), products:product_create
     def test_admin_sees_create_product_cta(self, admin_user):
         client = login(admin_user)
         html = client.get(reverse('stock:entry')).content.decode()
         assert reverse('products:product_create') in html
         assert 'Créer un produit' in html
 
+    # Vérifie que, sans produit, le gestionnaire voit « Contactez un administrateur » et aucun lien de création.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_stock_manager_sees_contact_admin_message(self, stock_manager_user):
         # stock_manager cannot create products -> no create link, contact message instead
         client = login(stock_manager_user)
@@ -159,6 +185,8 @@ class TestEmptyState:
 @pytest.mark.django_db
 class TestSubmissionStillWorks:
 
+    # Vérifie que le POST redirige, crée un mouvement d'entrée de 40 et porte le stock du dépôt à 40.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py), StockMovement.save() (apps/stock/models.py)
     def test_post_creates_movement_and_updates_stock(self, stock_manager_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(stock_manager_user)
@@ -184,9 +212,13 @@ class TestSubmissionStillWorks:
 @pytest.mark.django_db
 class TestEntryValidation:
 
+    # Prépare la liste des messages Django de la réponse, convertis en texte.
+    # Liens : contexte messages de la réponse (django.contrib.messages)
     def _messages(self, response):
         return [str(m) for m in response.context['messages']]
 
+    # Vérifie qu'un produit vide affiche un message clair en français, sans créer de mouvement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_empty_product_shows_friendly_error(self, stock_manager_user, enterprise, warehouse):
         make_product(enterprise)
         client = login(stock_manager_user)
@@ -199,6 +231,8 @@ class TestEntryValidation:
         assert any('sélectionner un produit' in m for m in messages)
         assert not any("expected a number" in m for m in messages)
 
+    # Vérifie qu'un identifiant de produit non numérique renvoie 200 sans créer de mouvement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_non_numeric_product_rejected(self, stock_manager_user, enterprise):
         make_product(enterprise)
         client = login(stock_manager_user)
@@ -206,6 +240,8 @@ class TestEntryValidation:
         assert resp.status_code == 200
         assert StockMovement.objects.count() == 0
 
+    # Vérifie qu'une quantité vide affiche « Quantité invalide » sans créer de mouvement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_empty_quantity_rejected(self, stock_manager_user, enterprise):
         product = make_product(enterprise)
         client = login(stock_manager_user)
@@ -214,6 +250,8 @@ class TestEntryValidation:
         assert StockMovement.objects.count() == 0
         assert any('Quantité invalide' in m for m in self._messages(resp))
 
+    # Vérifie qu'une quantité de 0 renvoie 200 sans créer de mouvement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_zero_quantity_rejected(self, stock_manager_user, enterprise):
         product = make_product(enterprise)
         client = login(stock_manager_user)
@@ -221,6 +259,8 @@ class TestEntryValidation:
         assert resp.status_code == 200
         assert StockMovement.objects.count() == 0
 
+    # Vérifie qu'un produit d'une autre entreprise renvoie 200 sans créer de mouvement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_product_from_another_enterprise_rejected(self, stock_manager_user):
         other = Enterprise.objects.create(name='Other', code='OTHER2', currency='FB')
         foreign = make_product(other, name='Foreign Product')
@@ -229,6 +269,8 @@ class TestEntryValidation:
         assert resp.status_code == 200
         assert StockMovement.objects.count() == 0
 
+    # Vérifie qu'un emplacement d'une autre entreprise renvoie 200 sans créer de mouvement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_location_from_another_enterprise_rejected(self, stock_manager_user, enterprise):
         product = make_product(enterprise)
         other = Enterprise.objects.create(name='Other', code='OTHER3', currency='FB')
@@ -242,6 +284,8 @@ class TestEntryValidation:
         assert resp.status_code == 200
         assert StockMovement.objects.count() == 0
 
+    # Vérifie que le bouton reste désactivé sans produit choisi et que le champ caché n'a pas required.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_submit_button_disabled_until_product_selected(self, stock_manager_user, enterprise):
         make_product(enterprise)
         client = login(stock_manager_user)
@@ -258,12 +302,16 @@ class TestEntryValidation:
 @pytest.mark.django_db
 class TestSeedCatalogCommand:
 
+    # Vérifie que seed_catalog ajoute des catégories et des produits à l'entreprise existante.
+    # Liens : commande seed_catalog (apps/products/management/commands/seed_catalog.py)
     def test_seeds_existing_enterprise(self, enterprise):
         assert Product.objects.filter(enterprise=enterprise).count() == 0
         call_command('seed_catalog', stdout=StringIO())
         assert Category.objects.filter(enterprise=enterprise).count() > 0
         assert Product.objects.filter(enterprise=enterprise).count() > 0
 
+    # Vérifie qu'un second lancement de seed_catalog ne change pas le nombre de produits.
+    # Liens : commande seed_catalog (apps/products/management/commands/seed_catalog.py)
     def test_is_idempotent(self, enterprise):
         out = StringIO()
         call_command('seed_catalog', stdout=out)
@@ -271,6 +319,8 @@ class TestSeedCatalogCommand:
         call_command('seed_catalog', stdout=out)
         assert Product.objects.filter(enterprise=enterprise).count() == first_count
 
+    # Vérifie que --enterprise ne remplit que l'entreprise ciblée et laisse l'autre vide.
+    # Liens : commande seed_catalog (apps/products/management/commands/seed_catalog.py)
     def test_enterprise_filter(self):
         target = Enterprise.objects.create(name='Target', code='TGT', currency='FB')
         other = Enterprise.objects.create(name='Skip', code='SKIP', currency='FB')
@@ -278,6 +328,8 @@ class TestSeedCatalogCommand:
         assert Product.objects.filter(enterprise=target).count() > 0
         assert Product.objects.filter(enterprise=other).count() == 0
 
+    # Vérifie que --with-stock crée une ligne de stock au dépôt pour chaque produit créé.
+    # Liens : commande seed_catalog (apps/products/management/commands/seed_catalog.py), modèle Stock
     def test_with_stock_flag_creates_stock_rows(self, enterprise, warehouse):
         call_command('seed_catalog', '--with-stock', stdout=StringIO())
         products = Product.objects.filter(enterprise=enterprise)
@@ -289,6 +341,8 @@ class TestSeedCatalogCommand:
 @pytest.mark.django_db
 class TestEmplacementLock:
 
+    # Vérifie que ?location= place l'emplacement dans un champ caché, sans liste déroulante.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_emplacement_locked_when_location_in_url(self, admin_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(admin_user)
@@ -298,12 +352,16 @@ class TestEmplacementLock:
         assert 'Dépôt Principal' in html
         assert '<select name="location"' not in html
 
+    # Vérifie que, sans ?location=, le formulaire affiche la liste déroulante des emplacements.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_emplacement_dropdown_when_no_location_param(self, admin_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(admin_user)
         html = client.get(reverse('stock:entry') + f'?product={product.pk}').content.decode()
         assert '<select name="location"' in html
 
+    # Vérifie qu'un POST avec l'emplacement crée un mouvement de 7 à cet emplacement.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py), modèle StockMovement
     def test_locked_emplacement_round_trips_on_submit(self, admin_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(admin_user)
@@ -319,6 +377,8 @@ class TestEmplacementLock:
 @pytest.mark.django_db
 class TestEntryNextRedirect:
 
+    # Vérifie qu'après l'enregistrement, la redirection suit le chemin interne reçu dans next.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_redirects_to_next_after_save(self, admin_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(admin_user)
@@ -329,6 +389,8 @@ class TestEntryNextRedirect:
         assert resp.status_code == 302
         assert resp['Location'] == '/locations/2/?next=/products/5/'
 
+    # Vérifie qu'une URL externe dans next est refusée : la redirection n'y mène pas.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_external_next_rejected(self, admin_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(admin_user)
@@ -339,6 +401,8 @@ class TestEntryNextRedirect:
         assert resp.status_code == 302
         assert 'evil.com' not in resp['Location']
 
+    # Vérifie que ?next= est conservé dans un champ caché du formulaire.
+    # Liens : stock:entry, entry_view (apps/stock/views_frontend.py)
     def test_form_carries_next_hidden_field(self, admin_user, enterprise, warehouse):
         product = make_product(enterprise)
         client = login(admin_user)

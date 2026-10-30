@@ -21,9 +21,13 @@ class UserSerializer(serializers.ModelSerializer):
             'password': {'write_only': True}
         }
     
+    # Rôle : renvoie le nom complet, ou le username si le nom complet est vide.
+    # Liens : appelée par DRF pour le champ full_name ; réponses de UserViewSet (api/v1/views/accounts.py).
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
     
+    # Rôle : crée l'utilisateur avec un mot de passe haché, ou inutilisable si aucun n'est fourni.
+    # Liens : appelée par DRF sur POST /api/v1/users/ (UserViewSet) ; enregistre User (apps/accounts/models.py).
     def create(self, validated_data):
         """Create user with hashed password"""
         password = validated_data.pop('password', None)
@@ -35,6 +39,8 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
         return user
     
+    # Rôle : met à jour les champs reçus et ne change le mot de passe que s'il est fourni, en le hachant.
+    # Liens : appelée par DRF sur PUT/PATCH /api/v1/users/<id>/ (UserViewSet) ; enregistre User.
     def update(self, instance, validated_data):
         """Update user and handle password separately"""
         password = validated_data.pop('password', None)
@@ -56,6 +62,8 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'full_name', 'email', 'role', 'role_display', 'is_active']
     
+    # Rôle : renvoie le nom complet, ou le username si le nom complet est vide.
+    # Liens : appelée par DRF pour la liste de UserViewSet (api/v1/views/accounts.py).
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
 
@@ -75,6 +83,8 @@ class ActionLogSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at']
     
+    # Rôle : retire ip_address de la réponse si le rôle du demandeur n'est ni admin ni manager.
+    # Liens : appelée par DRF pour ActionLogViewSet (api/v1/views/accounts.py) ; lit request dans le contexte.
     def to_representation(self, instance):
         """Hide IP address from non-admin users"""
         data = super().to_representation(instance)

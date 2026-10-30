@@ -15,9 +15,15 @@ User = get_user_model()
 STOCK_MANAGE_ROLES = ('admin', 'owner', 'manager', 'warehouse_manager', 'boutique_manager', 'stock_manager')
 
 
+# Rôle : fabrique un décorateur de vue qui limite l'accès aux rôles passés en paramètre.
+# Liens : utilisé par les vues de création, modification, suppression et types de ce fichier.
 def role_required(*roles):
     """Decorator to check if the user has one of the required roles."""
+    # Rôle : reçoit la vue à protéger et retourne sa version enveloppée par wrapper.
+    # Liens : appelée par Python à l'application de @role_required, au chargement du module.
     def decorator(view_func):
+        # Rôle : renvoie un anonyme vers login et un rôle non autorisé vers locations:dashboard, sinon lance la vue.
+        # Liens : exécutée à chaque requête vers une vue décorée ; lit user.role (apps/accounts/models.py).
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('login')
@@ -29,6 +35,9 @@ def role_required(*roles):
     return decorator
 
 
+# Rôle : liste les emplacements de l'entreprise, inactifs inclus, avec compteurs de stock faible et rupture.
+# Liens : route /locations/ ; lit Location et LocationStock ; lien depuis templates/base.html ;
+# rend apps/locations/templates/locations/dashboard.html.
 @login_required
 def dashboard(request):
     """Locations dashboard showing all locations for the enterprise"""
@@ -77,18 +86,24 @@ def dashboard(request):
     return render(request, 'locations/dashboard.html', context)
 
 
+# Rôle : retourne les utilisateurs actifs de l'entreprise, proposés comme responsables d'un emplacement.
+# Liens : appelée par location_create et location_edit pour remplir le formulaire location_form.html.
 def _managers_for(enterprise):
     if not enterprise:
         return User.objects.none()
     return User.objects.filter(enterprise=enterprise, is_active=True).order_by('first_name', 'username')
 
 
+# Rôle : retourne les types d'emplacement actifs de l'entreprise, triés par nom.
+# Liens : appelée par location_create et location_edit pour remplir le formulaire location_form.html.
 def _active_types(enterprise):
     if not enterprise:
         return LocationType.objects.none()
     return LocationType.objects.filter(enterprise=enterprise, is_active=True).order_by('name')
 
 
+# Rôle : nettoie les champs POST en dictionnaire ; les cases à cocher deviennent des booléens.
+# Liens : appelée par location_create et location_edit ; résultat lu par _validate_location et le template.
 def _location_data_from_post(post):
     """Normalize POST data into the dict the form template expects."""
     return {
@@ -104,6 +119,8 @@ def _location_data_from_post(post):
     }
 
 
+# Rôle : convertit un Location au même format de dictionnaire que le formulaire (id en texte, vides en '').
+# Liens : appelée par location_edit en GET pour préremplir le formulaire location_form.html.
 def _location_data_from_instance(loc):
     return {
         'name': loc.name,
@@ -118,6 +135,8 @@ def _location_data_from_instance(loc):
     }
 
 
+# Rôle : vérifie nom, code, type actif de l'entreprise et unicité du code ; retourne (erreurs, type choisi).
+# Liens : appelée par location_create et location_edit ; lit LocationType et Location.
 def _validate_location(data, enterprise, exclude_pk=None):
     """Validate the form; returns (errors, chosen_type_or_None)."""
     errors = []
@@ -145,6 +164,9 @@ def _validate_location(data, enterprise, exclude_pk=None):
     return errors, chosen_type
 
 
+# Rôle : crée un emplacement ; son comportement (location_type) est copié depuis le type choisi.
+# Liens : route /locations/create/ ; utilise _validate_location et Location.save() ;
+# rend apps/locations/templates/locations/location_form.html.
 @role_required('admin', 'owner', 'manager')
 def location_create(request):
     """Create a new location."""
@@ -183,6 +205,9 @@ def location_create(request):
     })
 
 
+# Rôle : modifie un emplacement de l'entreprise et réaligne location_type sur le type choisi.
+# Liens : route /locations/<pk>/edit/ ; utilise _validate_location, Location.save() ; redirige vers le détail ;
+# rend apps/locations/templates/locations/location_form.html.
 @role_required('admin', 'owner', 'manager')
 def location_edit(request, pk):
     """Edit an existing location."""
@@ -228,6 +253,9 @@ def location_edit(request, pk):
     })
 
 
+# Rôle : supprime un emplacement (POST), sauf s'il a du stock, des mouvements ou des transferts liés.
+# Liens : route /locations/<pk>/delete/, formulaire de location_form.html ; en cas de blocage, renvoie vers
+# location_edit ; vérifie LocationStock, Stock, StockMovement et Transfer via leurs relations.
 @role_required('admin', 'owner', 'manager')
 def location_delete(request, pk):
     """Delete a location (only if it holds no stock / movements / transfers)."""
@@ -262,6 +290,9 @@ def location_delete(request, pk):
     return redirect('locations:dashboard')
 
 
+# Rôle : affiche un emplacement et son stock ; un caissier ne voit que le sien ; ?next= règle le bouton retour.
+# Liens : route /locations/<pk>/ ; lit LocationStock ; rend apps/locations/templates/locations/detail.html ;
+# lien depuis apps/products/templates/products/product_detail.html, entre autres.
 @login_required
 def location_detail(request, pk):
     """Detail view for a specific location"""
@@ -309,6 +340,9 @@ def location_detail(request, pk):
     return render(request, 'locations/detail.html', context)
 
 
+# Rôle : liste le stock d'un emplacement ; filtres catégorie et statut (low, out, alert) ; export PDF/Excel.
+# Liens : route /locations/<pk>/stock/ ; export via export_list_response (apps/core/exports.py) ;
+# rend apps/locations/templates/locations/stock.html ; lien depuis apps/stock/templates/stock/dashboard.html.
 @login_required
 def location_stock(request, pk):
     """Stock management for a specific location"""
@@ -387,6 +421,8 @@ def location_stock(request, pk):
 # LOCATION TYPE MANAGEMENT (manageable Emplacement types)
 # =============================================================================
 
+# Rôle : liste les types d'emplacement de l'entreprise, avec le nombre d'emplacements qui utilisent chacun.
+# Liens : route /locations/types/ ; annote LocationType ; rend le template type_list.html de cette app.
 @role_required('admin', 'owner', 'manager')
 def type_list(request):
     """List the enterprise's location types with usage counts."""
@@ -402,6 +438,8 @@ def type_list(request):
     })
 
 
+# Rôle : nettoie les champs POST du formulaire de type en dictionnaire (nom, comportement, actif).
+# Liens : appelée par type_create et type_edit ; résultat lu par _validate_type.
 def _type_data_from_post(post):
     return {
         'name': post.get('name', '').strip(),
@@ -410,6 +448,8 @@ def _type_data_from_post(post):
     }
 
 
+# Rôle : vérifie le nom, le comportement autorisé et l'unicité du nom dans l'entreprise ; retourne les erreurs.
+# Liens : appelée par type_create et type_edit ; lit LocationType (apps/locations/models.py).
 def _validate_type(data, enterprise, exclude_pk=None):
     errors = []
     if not enterprise:
@@ -427,6 +467,9 @@ def _validate_type(data, enterprise, exclude_pk=None):
     return errors
 
 
+# Rôle : crée un type d'emplacement ; en GET, le formulaire propose « boutique » par défaut.
+# Liens : route /locations/types/create/ ; utilise _type_data_from_post et _validate_type ;
+# rend apps/locations/templates/locations/type_form.html ; liens depuis type_list.html et location_form.html.
 @role_required('admin', 'owner', 'manager')
 def type_create(request):
     """Create a new location type."""
@@ -454,6 +497,9 @@ def type_create(request):
     })
 
 
+# Rôle : modifie un type et répercute son comportement sur tous les emplacements qui l'utilisent.
+# Liens : route /locations/types/<pk>/edit/ ; met à jour LocationType et Location.location_type,
+# sans passer par Location.save() ; rend apps/locations/templates/locations/type_form.html.
 @role_required('admin', 'owner', 'manager')
 def type_edit(request, pk):
     """Edit a location type."""
@@ -488,6 +534,8 @@ def type_edit(request, pk):
     })
 
 
+# Rôle : supprime un type (POST seulement), refusé tant qu'un emplacement l'utilise.
+# Liens : route /locations/types/<pk>/delete/, formulaire de apps/locations/templates/locations/type_list.html.
 @role_required('admin', 'owner', 'manager')
 def type_delete(request, pk):
     """Delete a location type (blocked if any location uses it)."""

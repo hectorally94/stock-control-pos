@@ -413,6 +413,8 @@
     const tourKey = 'tour_completed_{{ user.id }}';
 
     // Create the tour
+    // Rôle : construit la visite guidée Shepherd, avec étapes selon le rôle ; fin ou annulation la marquent vue.
+    // Liens : appelée par startTour ; écrit tourKey dans localStorage, relu par le setTimeout de ce fichier.
     function createTour() {
         const tour = new Shepherd.Tour({
             useModalOverlay: true,
@@ -642,6 +644,8 @@
     }
 
     // Start the tour
+    // Rôle : crée la visite guidée puis la démarre.
+    // Liens : appelée par le bouton #tour-help-btn et le setTimeout de ce fichier ; appelle createTour.
     function startTour() {
         const tour = createTour();
         tour.start();
@@ -650,6 +654,8 @@
     // Check if first visit and start tour automatically
     document.addEventListener('DOMContentLoaded', function() {
         // Wait a bit for page to fully render
+        // Rôle : une seconde après le chargement, lance la visite si elle n'a jamais été vue par cet utilisateur.
+        // Liens : lancé par DOMContentLoaded ; lit tourKey dans localStorage et appelle startTour.
         setTimeout(function() {
             if (!localStorage.getItem(tourKey)) {
                 startTour();

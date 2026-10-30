@@ -453,6 +453,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const categoryIds = {{ category_ids|safe }};
     const paymentCodes = {{ payment_codes|safe }};
 
+    // Rôle : affiche le curseur main quand la souris survole un élément cliquable d'un graphique.
+    // Liens : passée à l'option onHover des graphiques Chart.js de cette page.
     function pointerOnHover(event, elements) {
         event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
     }
@@ -481,6 +483,9 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             onHover: pointerOnHover,
+            // Rôle : au clic, ouvre les ventes filtrées du graphique ; les barres de dépenses mènent aux dépenses du mois.
+            // Liens : appelée par Chart.js ; SALES_URL : sales_list (apps/pos/views_frontend.py) ;
+            // EXPENSES_URL : expense_list (apps/accounting/views.py).
             onClick: function(event, elements) {
                 if (!elements.length) return;
                 window.location.href = SALES_URL + '?date=' + dailyDates[elements[0].index];
@@ -498,6 +503,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     padding: 12,
                     displayColors: false,
                     callbacks: {
+                        // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
+                        // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                         label: function(context) {
                             return context.parsed.y.toLocaleString() + ' FB';
                         }
@@ -511,6 +518,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: gridColor
                     },
                     ticks: {
+                        // Rôle : formate les graduations de l'axe Y selon la langue du navigateur (avec FB pour les ventes du jour).
+                        // Liens : appelée par Chart.js (ticks.callback) ; données de dashboard_view (apps/reports/views.py).
                         callback: function(value) {
                             return value.toLocaleString() + ' FB';
                         }
@@ -551,6 +560,9 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             onHover: pointerOnHover,
+            // Rôle : au clic, ouvre les ventes filtrées du graphique ; les barres de dépenses mènent aux dépenses du mois.
+            // Liens : appelée par Chart.js ; SALES_URL : sales_list (apps/pos/views_frontend.py) ;
+            // EXPENSES_URL : expense_list (apps/accounting/views.py).
             onClick: function(event, elements) {
                 if (!elements.length) return;
                 const el = elements[0];
@@ -574,6 +586,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
+                        // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
+                        // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                         label: function(context) {
                             return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' FB';
                         }
@@ -587,6 +601,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: gridColor
                     },
                     ticks: {
+                        // Rôle : formate les graduations de l'axe Y selon la langue du navigateur (avec FB pour les ventes du jour).
+                        // Liens : appelée par Chart.js (ticks.callback) ; données de dashboard_view (apps/reports/views.py).
                         callback: function(value) {
                             return value.toLocaleString();
                         }
@@ -628,6 +644,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: pointerOnHover,
+                // Rôle : au clic, ouvre les ventes filtrées du graphique ; les barres de dépenses mènent aux dépenses du mois.
+                // Liens : appelée par Chart.js ; SALES_URL : sales_list (apps/pos/views_frontend.py) ;
+                // EXPENSES_URL : expense_list (apps/accounting/views.py).
                 onClick: function(event, elements) {
                     if (!elements.length) return;
                     const catId = categoryIds[elements[0].index];
@@ -652,6 +671,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
+                            // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
+                            // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                             label: function(context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
@@ -694,6 +715,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: pointerOnHover,
+                // Rôle : au clic, ouvre les ventes filtrées du graphique ; les barres de dépenses mènent aux dépenses du mois.
+                // Liens : appelée par Chart.js ; SALES_URL : sales_list (apps/pos/views_frontend.py) ;
+                // EXPENSES_URL : expense_list (apps/accounting/views.py).
                 onClick: function(event, elements) {
                     if (!elements.length) return;
                     window.location.href = SALES_URL + '?date=month&payment=' + encodeURIComponent(paymentCodes[elements[0].index]);
@@ -717,6 +741,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
+                            // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
+                            // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                             label: function(context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
@@ -750,6 +776,9 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             onHover: pointerOnHover,
+            // Rôle : au clic, ouvre les ventes filtrées du graphique ; les barres de dépenses mènent aux dépenses du mois.
+            // Liens : appelée par Chart.js ; SALES_URL : sales_list (apps/pos/views_frontend.py) ;
+            // EXPENSES_URL : expense_list (apps/accounting/views.py).
             onClick: function(event, elements) {
                 if (!elements.length) return;
                 window.location.href = SALES_URL + '?date=today';
@@ -766,6 +795,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
+                        // Rôle : rédige l'infobulle en FB, avec le nom de la série ou le pourcentage selon le graphique.
+                        // Liens : appelée par Chart.js (tooltip.callbacks) ; données de dashboard_view (apps/reports/views.py).
                         label: function(context) {
                             return context.parsed.y.toLocaleString() + ' FB';
                         }
@@ -779,6 +810,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: gridColor
                     },
                     ticks: {
+                        // Rôle : formate les graduations de l'axe Y selon la langue du navigateur (avec FB pour les ventes du jour).
+                        // Liens : appelée par Chart.js (ticks.callback) ; données de dashboard_view (apps/reports/views.py).
                         callback: function(value) {
                             return value.toLocaleString();
                         }

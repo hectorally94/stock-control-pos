@@ -71,6 +71,8 @@ CATEGORY_DESCRIPTIONS = {
 class Command(BaseCommand):
     help = 'Seed a starter product catalog into existing enterprises (idempotent).'
 
+    # Rôle : déclare --enterprise (une seule entreprise) et --with-stock (créer aussi les lignes de stock).
+    # Liens : appelée par Django au lancement de la commande ; valeurs lues par Command.handle.
     def add_arguments(self, parser):
         parser.add_argument(
             '--enterprise',
@@ -84,6 +86,8 @@ class Command(BaseCommand):
             help='Also create a Stock row (quantity 0) for each product at the main location.',
         )
 
+    # Rôle : sélectionne les entreprises (toutes par défaut) et s'arrête avec un message si aucune ne correspond.
+    # Liens : python manage.py seed_catalog et tests/test_stock_entry_dropdown.py ; appelle _seed_enterprise.
     def handle(self, *args, **options):
         from apps.core.models import Enterprise
 
@@ -100,6 +104,8 @@ class Command(BaseCommand):
         for enterprise in enterprises:
             self._seed_enterprise(enterprise, with_stock=options['with_stock'])
 
+    # Rôle : crée en transaction le catalogue d'exemple, sans doublon (catégorie par nom, produit par SKU).
+    # Liens : appelée par Command.handle ; écrit Category et Product (apps/products/models.py) ; puis _ensure_stock.
     @transaction.atomic
     def _seed_enterprise(self, enterprise, with_stock=False):
         from apps.products.models import Category, Product
@@ -151,6 +157,8 @@ class Command(BaseCommand):
         if with_stock:
             self._ensure_stock(enterprise, seeded_products)
 
+    # Rôle : crée une ligne Stock à quantité 0 par produit, au dépôt principal ou au premier emplacement actif.
+    # Liens : appelée par _seed_enterprise avec --with-stock ; écrit Stock directement, sans StockMovement.
     def _ensure_stock(self, enterprise, products):
         from apps.locations.models import Location
         from apps.stock.models import Stock

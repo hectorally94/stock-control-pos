@@ -13,6 +13,9 @@ from apps.stock.models import Stock
 from apps.customers.models import Customer
 
 
+# Rôle : met en cache 5 min les stats globales ; hors cache, F n'étant pas importé, lève un NameError.
+# Liens : aucun appelant trouvé dans le projet ; lit Sale, Expense, Stock et Customer ;
+# cache défini par CACHES dans stock_control/settings.py.
 def get_dashboard_stats(force_refresh=False):
     """
     Get cached dashboard statistics
@@ -86,6 +89,8 @@ def get_dashboard_stats(force_refresh=False):
     return data
 
 
+# Rôle : met en cache 10 min le total des ventes d'une période, par mode de paiement et par jour.
+# Liens : aucun appelant trouvé dans le projet ; lit Sale (apps/pos/models.py).
 def get_sales_summary(start_date, end_date, force_refresh=False):
     """
     Get cached sales summary for date range
@@ -138,6 +143,8 @@ def get_sales_summary(start_date, end_date, force_refresh=False):
     return summary
 
 
+# Rôle : met en cache 15 min les produits les plus vendus (tri par chiffre d'affaires) sur N jours.
+# Liens : aucun appelant trouvé dans le projet ; lit SaleItem (apps/pos/models.py).
 def get_top_products(limit=10, days=30, force_refresh=False):
     """
     Get cached top selling products
@@ -173,6 +180,8 @@ def get_top_products(limit=10, days=30, force_refresh=False):
     return data
 
 
+# Rôle : supprime dashboard_stats puis appelle cache.delete_pattern, absent du cache base de données de Django.
+# Liens : aucun appelant trouvé dans le projet ; cache défini par CACHES dans stock_control/settings.py.
 def invalidate_dashboard_cache():
     """Invalidate all dashboard caches"""
     cache.delete('dashboard_stats')
@@ -181,6 +190,8 @@ def invalidate_dashboard_cache():
     cache.delete_pattern('top_products_*')
 
 
+# Rôle : met en cache 10 min jusqu'à 20 produits en stock faible et 20 en rupture.
+# Liens : aucun appelant trouvé dans le projet ; lit Stock (apps/stock/models.py).
 def get_stock_alerts(force_refresh=False):
     """
     Get cached stock alerts

@@ -19,6 +19,9 @@ from apps.locations.models import Location, LocationStock
 from apps.reports.utils.excel_generator import sales_report, inventory_report, expense_report, customer_report
 
 
+# Rôle : calcule ventes, dépenses, bénéfice, crédits, stock par emplacement et données JSON des graphiques.
+# Liens : route /reports/ ; template apps/reports/templates/reports/dashboard.html ;
+# lit Sale, SaleItem, Expense, CustomerCredit, CreditPayment, Location et LocationStock.
 @login_required
 def dashboard_view(request):
     """Reports dashboard with charts"""
@@ -278,6 +281,8 @@ def dashboard_view(request):
     return render(request, 'reports/dashboard.html', context)
 
 
+# Rôle : renvoie en JSON les ventes quotidiennes des 30 derniers jours (seul type accepté : daily).
+# Liens : aucune route dans apps/reports/urls.py et aucun appelant trouvé ; lit Sale (apps/pos/models.py).
 @login_required
 def chart_data_api(request):
     """API endpoint for chart data (AJAX)"""
@@ -312,6 +317,9 @@ def chart_data_api(request):
     return JsonResponse({'error': 'Type non supporté'}, status=400)
 
 
+# Rôle : télécharge le rapport Excel des ventes (mois en cours par défaut) et journalise l'export.
+# Liens : route /reports/export/sales/ (boutons de reports/dashboard.html) ;
+# appelle sales_report (apps/reports/utils/excel_generator.py) ; écrit dans ActionLog.
 @login_required
 def export_sales_report(request):
     """Export sales report to Excel"""
@@ -367,6 +375,9 @@ def export_sales_report(request):
     return response
 
 
+# Rôle : télécharge l'inventaire Excel, éventuellement limité à un emplacement, et journalise l'export.
+# Liens : route /reports/export/inventory/ (boutons de reports/dashboard.html) ;
+# appelle inventory_report (apps/reports/utils/excel_generator.py) ; écrit dans ActionLog.
 @login_required
 def export_inventory_report(request):
     """Export inventory report to Excel"""
@@ -404,6 +415,9 @@ def export_inventory_report(request):
     return response
 
 
+# Rôle : télécharge le rapport Excel des dépenses (mois en cours par défaut) et journalise l'export.
+# Liens : route /reports/export/expenses/ (bouton de reports/dashboard.html) ;
+# appelle expense_report (apps/reports/utils/excel_generator.py) ; écrit dans ActionLog.
 @login_required
 def export_expense_report(request):
     """Export expense report to Excel"""
@@ -446,6 +460,9 @@ def export_expense_report(request):
     return response
 
 
+# Rôle : télécharge le rapport Excel des clients et journalise l'export.
+# Liens : route /reports/export/customers/ (bouton de reports/dashboard.html) ;
+# appelle customer_report (apps/reports/utils/excel_generator.py) ; écrit dans ActionLog.
 @login_required
 def export_customer_report(request):
     """Export customer report to Excel"""

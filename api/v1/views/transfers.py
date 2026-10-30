@@ -35,6 +35,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'sent_at', 'received_at', 'reference']
     ordering = ['-created_at']
 
+    # Rôle : choisit un serializer selon l'action : liste, création, envoi, réception, annulation ou détail.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/transfers.py.
     def get_serializer_class(self):
         if self.action == 'list':
             return TransferListSerializer
@@ -48,6 +50,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
             return TransferCancelSerializer
         return TransferSerializer
 
+    # Rôle : filtre par entreprise, puis par emplacement de l'utilisateur, sauf pour owner, admin et manager.
+    # Liens : appelée par DRF ; s'appuie sur EnterpriseViewSetMixin (apps/core/mixins.py) ; lit Transfer.
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()
@@ -65,6 +69,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
 
         return queryset
 
+    # Rôle : renvoie les transferts visibles au statut draft ou pending, sans pagination.
+    # Liens : route GET /api/v1/transfers/pending/ ; dépend de get_queryset() ; réponse via TransferListSerializer.
     @action(detail=False, methods=['get'])
     def pending(self, request):
         """Get pending transfers (drafts and awaiting approval)"""
@@ -72,6 +78,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = TransferListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie les transferts visibles au statut in_transit, sans pagination.
+    # Liens : route GET /api/v1/transfers/in_transit/ ; dépend de get_queryset() ; utilise TransferListSerializer.
     @action(detail=False, methods=['get'])
     def in_transit(self, request):
         """Get transfers that are in transit"""
@@ -79,6 +87,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = TransferListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie les transferts en transit vers l'emplacement de l'utilisateur, ou tous s'il n'en a pas.
+    # Liens : route GET /api/v1/transfers/incoming/ ; get_queryset() et User.location (apps/accounts/models.py).
     @action(detail=False, methods=['get'])
     def incoming(self, request):
         """Get incoming transfers for user's location"""
@@ -93,6 +103,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = TransferListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie les transferts non terminés partant de l'emplacement de l'utilisateur, ou tous s'il n'en a pas.
+    # Liens : route GET /api/v1/transfers/outgoing/ ; get_queryset() et User.location (apps/accounts/models.py).
     @action(detail=False, methods=['get'])
     def outgoing(self, request):
         """Get outgoing transfers from user's location"""
@@ -107,6 +119,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = TransferListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # Rôle : lance l'envoi et transforme une ValidationError métier, comme un stock insuffisant, en réponse 400.
+    # Liens : POST /api/v1/transfers/<id>/send/ ; Transfer.send() (apps/transfers/models.py) crée les sorties.
     @action(detail=True, methods=['post'])
     def send(self, request, pk=None):
         """Send a transfer (mark as in_transit)"""
@@ -121,6 +135,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    # Rôle : applique les received_quantity fournies, en ignorant les id inconnus, puis réceptionne le transfert.
+    # Liens : POST /api/v1/transfers/<id>/receive/ ; Transfer.receive() (apps/transfers/models.py) crée les entrées.
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanReceiveTransfers])
     def receive(self, request, pk=None):
         """Receive a transfer"""
@@ -151,6 +167,8 @@ class TransferViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    # Rôle : exige une raison, annule le transfert et transforme une ValidationError métier en réponse 400.
+    # Liens : POST /api/v1/transfers/<id>/cancel/ ; Transfer.cancel() (apps/transfers/models.py) rend le stock.
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         """Cancel a transfer"""
@@ -181,6 +199,8 @@ class TransferItemViewSet(viewsets.ModelViewSet):
     filterset_fields = ['transfer']
     search_fields = ['product__name']
 
+    # Rôle : limite les lignes à celles de l'entreprise de l'utilisateur quand il en a une ; sinon aucun filtre.
+    # Liens : appelée par DRF pour /api/v1/transfer-items/ ; filtre via transfer (apps/transfers/models.py).
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()

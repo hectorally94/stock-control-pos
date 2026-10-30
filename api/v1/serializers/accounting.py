@@ -12,6 +12,8 @@ class ExpenseCategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'is_active', 'expense_count', 'created_at']
         read_only_fields = ['id', 'created_at']
     
+    # Rôle : compte les dépenses rattachées à la catégorie pour le champ expense_count.
+    # Liens : appelée par DRF pour ExpenseCategoryViewSet (api/v1/views/accounting.py) ; lit obj.expenses.
     def get_expense_count(self, obj):
         return obj.expenses.count()
 
@@ -36,6 +38,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
         # send it.
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
+    # Rôle : refuse un montant de dépense nul ou négatif.
+    # Liens : appelée par DRF pour les écritures de ExpenseViewSet (api/v1/views/accounting.py).
     def validate_amount(self, value):
         """Ensure amount is positive"""
         if value <= 0:
@@ -75,6 +79,8 @@ class DailySummarySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    # Rôle : calcule net_profit / total_sales en pourcentage (2 décimales), ou 0 si les ventes sont nulles.
+    # Liens : appelée par DRF pour DailySummaryViewSet ; données issues de la commande generate_daily_summary.
     def get_profit_margin(self, obj):
         """Calculate profit margin percentage"""
         if obj.total_sales > 0:

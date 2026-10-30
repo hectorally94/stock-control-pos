@@ -16,9 +16,12 @@ class StoreSetting(models.Model):
             models.Index(fields=['key'], name='idx_store_settings_key'),
         ]
     
+    # Rôle : affiche le paramètre sous la forme « clé: valeur ».
     def __str__(self):
         return f"{self.key}: {self.value}"
     
+    # Rôle : lit la valeur d'une clé et renvoie la valeur par défaut si la clé n'existe pas.
+    # Liens : appelée par apps/customers/signals.py, apps/pos/utils/receipt_generator.py, api/v1/views/settings.py.
     @classmethod
     def get_setting(cls, key, default=None):
         """Helper method to retrieve a setting value"""
@@ -27,6 +30,8 @@ class StoreSetting(models.Model):
         except cls.DoesNotExist:
             return default
     
+    # Rôle : crée la clé ou met à jour sa valeur, puis renvoie le StoreSetting.
+    # Liens : appelée par l'action set_setting de api/v1/views/settings.py.
     @classmethod
     def set_setting(cls, key, value):
         """Helper method to set a setting value"""

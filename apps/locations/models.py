@@ -41,6 +41,7 @@ class LocationType(models.Model):
         ordering = ['enterprise', 'name']
         unique_together = [['enterprise', 'name']]
 
+    # Rôle : retourne le nom du type, pour l'admin Django et les listes déroulantes.
     def __str__(self):
         return self.name
 
@@ -118,9 +119,13 @@ class Location(models.Model):
             models.Index(fields=['code'], name='idx_loc_code'),
         ]
 
+    # Rôle : retourne le nom suivi du comportement interne (Dépôt ou Boutique), pas du type personnalisé.
     def __str__(self):
         return f"{self.name} ({self.get_location_type_display()})"
 
+    # Rôle : si cet emplacement est le dépôt principal, retire ce statut aux autres de la même entreprise.
+    # Liens : appelée par Django ; déclenchée par location_create, location_edit (apps/locations/views.py),
+    # l'admin et les commandes d'initialisation comme seed_scenario.
     def save(self, *args, **kwargs):
         # Ensure only one main warehouse per enterprise
         if self.is_main_warehouse:
@@ -130,14 +135,21 @@ class Location(models.Model):
             ).exclude(pk=self.pk).update(is_main_warehouse=False)
         super().save(*args, **kwargs)
 
+    # Rôle : indique si le comportement interne (location_type) est « dépôt ».
+    # Liens : aucun appelant trouvé dans apps/, api/, templates/ ni tests/ ; le code filtre sur location_type.
     @property
     def is_warehouse(self):
         return self.location_type == 'warehouse'
 
+    # Rôle : indique si le comportement interne (location_type) est « boutique ».
+    # Liens : aucun appelant trouvé dans apps/, api/, templates/ ni tests/ ; le code filtre sur location_type.
     @property
     def is_boutique(self):
         return self.location_type == 'boutique'
 
+    # Rôle : retourne le libellé du type personnalisé (type_ref), sinon celui du comportement interne.
+    # Liens : affichée par les templates dashboard.html et detail.html de apps/locations/templates/locations/ ;
+    # vérifiée par tests/test_locations_crud.py.
     @property
     def type_display(self):
         """Custom type label if set, otherwise the built-in behaviour label."""
@@ -200,13 +212,19 @@ class LocationStock(models.Model):
             models.Index(fields=['quantity'], name='idx_locstock_qty'),
         ]
 
+    # Rôle : retourne le produit, l'emplacement et la quantité sur une ligne (lit les deux relations liées).
     def __str__(self):
         return f"{self.product.name} @ {self.location.name}: {self.quantity}"
 
+    # Rôle : vrai si quantité <= seuil propre à cet emplacement ; une rupture compte donc aussi comme stock faible.
+    # Liens : lue par apps/locations/views.py, apps/locations/admin.py, les templates de locations,
+    # et l'API (api/v1/views/locations.py, api/v1/serializers/locations.py).
     @property
     def is_low_stock(self):
         return self.quantity <= self.min_stock_threshold
 
+    # Rôle : vrai si la quantité à cet emplacement est nulle ou négative.
+    # Liens : exposée par LocationStockSerializer (api/v1/serializers/locations.py) ; les vues web testent quantity.
     @property
     def is_out_of_stock(self):
         return self.quantity <= 0

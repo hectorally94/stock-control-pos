@@ -24,6 +24,8 @@ class StockViewSet(viewsets.ModelViewSet):
     ordering_fields = ['quantity', 'updated_at']
     ordering = ['product__name']
     
+    # Rôle : renvoie les lignes de Stock dont la quantité atteint le seuil du produit, filtrées en Python.
+    # Liens : route GET /api/v1/stock/low_stock_alerts/ ; utilise Stock.is_low_stock (apps/stock/models.py).
     @action(detail=False, methods=['get'])
     def low_stock_alerts(self, request):
         """
@@ -53,10 +55,14 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at']
     ordering = ['-created_at']
     
+    # Rôle : enregistre le mouvement au nom de l'utilisateur connecté.
+    # Liens : POST /api/v1/stock-movements/ ; StockMovement.save() (apps/stock/models.py) met à jour les stocks.
     def perform_create(self, serializer):
         """Set current user when creating movement"""
         serializer.save(user=self.request.user)
     
+    # Rôle : filtre les mouvements par product_id, start_date, end_date et movement_type, avec pagination.
+    # Liens : route GET /api/v1/stock-movements/movement_history/ ; lit StockMovement (apps/stock/models.py).
     @action(detail=False, methods=['get'])
     def movement_history(self, request):
         """

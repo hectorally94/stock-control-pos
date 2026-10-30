@@ -24,16 +24,22 @@ from apps.pos.models import Sale, SaleItem
 from tests.factories import UserFactory
 
 
+# Prépare une entreprise de test à laquelle rattacher les données.
+# Liens : modèle Enterprise (apps/core/models.py)
 @pytest.fixture
 def enterprise():
     return Enterprise.objects.create(name='Hema Test', code='HEMATEST', currency='FB')
 
 
+# Prépare un utilisateur admin rattaché à l'entreprise de test.
+# Liens : UserFactory (tests/factories.py)
 @pytest.fixture
 def admin_user(enterprise):
     return UserFactory(role='admin', enterprise=enterprise)
 
 
+# Prépare un type d'emplacement dépôt et le dépôt principal de l'entreprise.
+# Liens : modèles LocationType et Location (apps/locations/models.py)
 @pytest.fixture
 def depot(enterprise):
     wh = LocationType.objects.create(enterprise=enterprise, name='Dépôt', behaviour='warehouse')
@@ -41,6 +47,8 @@ def depot(enterprise):
                                    location_type='warehouse', type_ref=wh, is_main_warehouse=True)
 
 
+# Prépare un type d'emplacement boutique et trois boutiques.
+# Liens : modèles LocationType et Location (apps/locations/models.py)
 @pytest.fixture
 def boutiques(enterprise):
     bt = LocationType.objects.create(enterprise=enterprise, name='Boutique', behaviour='boutique')
@@ -51,6 +59,8 @@ def boutiques(enterprise):
     ]
 
 
+# Prépare une catégorie et un produit à vendre pour l'entreprise.
+# Liens : modèles Category et Product (apps/products/models.py)
 @pytest.fixture
 def product(enterprise):
     cat = Category.objects.create(name='Cat', enterprise=enterprise)
@@ -59,11 +69,15 @@ def product(enterprise):
                                   enterprise=enterprise)
 
 
+# Prépare la lecture de la quantité dans Stock pour un produit et un emplacement (0 si aucune ligne).
+# Liens : modèle Stock (apps/stock/models.py)
 def _stock(enterprise, location, product):
     s = Stock.objects.filter(enterprise=enterprise, location=location, product=product).first()
     return s.quantity if s else Decimal('0')
 
 
+# Prépare la lecture de la quantité dans LocationStock pour un produit et un emplacement (0 si absent).
+# Liens : modèle LocationStock (apps/locations/models.py)
 def _locstock(location, product):
     ls = LocationStock.objects.filter(location=location, product=product).first()
     return ls.quantity if ls else Decimal('0')
@@ -72,6 +86,8 @@ def _locstock(location, product):
 @pytest.mark.django_db
 class TestInventoryConsistency:
 
+    # Vérifie qu'une entrée de 500 au dépôt met à jour à la fois Stock et LocationStock.
+    # Liens : StockMovement.save() (apps/stock/models.py), LocationStock (apps/locations/models.py)
     def test_entry_updates_both_tables(self, enterprise, admin_user, depot, product):
         StockMovement.objects.create(
             enterprise=enterprise, location=depot, product=product, user=admin_user,
@@ -80,6 +96,8 @@ class TestInventoryConsistency:
         assert _stock(enterprise, depot, product) == Decimal('500')
         assert _locstock(depot, product) == Decimal('500')   # both in sync
 
+    # Vérifie qu'un transfert de 50 laisse 450 au dépôt et 50 en boutique dans les deux tables.
+    # Liens : Transfer.send() et receive() (apps/transfers/models.py), StockMovement (apps/stock/models.py)
     def test_transfer_moves_stock_consistently(self, enterprise, admin_user, depot, boutiques, product):
         # Stock depot with 500
         StockMovement.objects.create(
@@ -101,6 +119,8 @@ class TestInventoryConsistency:
         assert _stock(enterprise, b, product) == Decimal('50')
         assert _locstock(b, product) == Decimal('50')
 
+    # Vérifie qu'une vente de 5 ramène la boutique de 50 à 45 dans Stock et LocationStock.
+    # Liens : SaleItem, signaux apps/pos/signals.py, StockMovement (apps/stock/models.py)
     def test_sale_reduces_boutique_stock_in_both_tables(self, enterprise, admin_user, depot, boutiques, product):
         b = boutiques[0]
         # Put 50 at the boutique via a transfer
@@ -125,6 +145,8 @@ class TestInventoryConsistency:
         assert _stock(enterprise, b, product) == Decimal('45')
         assert _locstock(b, product) == Decimal('45')   # locations dashboard sees the sale too
 
+    # Vérifie qu'envoyer 50 avec 10 en stock lève ValidationError et laisse le dépôt à 10.
+    # Liens : Transfer.send() (apps/transfers/models.py)
     def test_insufficient_stock_blocks_transfer(self, enterprise, admin_user, depot, boutiques, product):
         b = boutiques[0]
         # Only 10 in depot, try to transfer 50
@@ -144,6 +166,8 @@ class TestInventoryConsistency:
 @pytest.mark.django_db
 class TestSeedScenarioCommand:
 
+    # Vérifie que le scénario laisse 350 au dépôt, répartit 150 en boutiques et garde les tables d'accord.
+    # Liens : commande seed_scenario (apps/products/management/commands/seed_scenario.py)
     def test_scenario_conserves_stock(self, enterprise, admin_user, depot, boutiques):
         # catalog
         cat = Category.objects.create(name='C', enterprise=enterprise)
@@ -167,6 +191,8 @@ class TestSeedScenarioCommand:
             for b in boutiques:
                 assert _locstock(b, p) == _stock(enterprise, b, p)
 
+    # Vérifie que --demo-cases crée un produit en stock faible et un en rupture dans la 1re boutique.
+    # Liens : commande seed_scenario (apps/products/management/commands/seed_scenario.py)
     def test_demo_cases_create_low_and_rupture(self, enterprise, admin_user, depot, boutiques):
         cat = Category.objects.create(name='C', enterprise=enterprise)
         p_low = Product.objects.create(name='AAA Low', category=cat, unit='piece',
@@ -182,6 +208,8 @@ class TestSeedScenarioCommand:
         assert _stock(enterprise, b, p_low) == _locstock(b, p_low)   # tables agree
         assert _locstock(b, p_out) == Decimal('0')
 
+    # Vérifie que lancer le scénario deux fois ne double pas le stock : le dépôt reste à 350.
+    # Liens : commande seed_scenario (apps/products/management/commands/seed_scenario.py)
     def test_scenario_idempotent(self, enterprise, admin_user, depot, boutiques):
         cat = Category.objects.create(name='C', enterprise=enterprise)
         Product.objects.create(name='P', category=cat, unit='piece',

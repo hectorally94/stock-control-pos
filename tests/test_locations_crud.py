@@ -16,11 +16,15 @@ from apps.stock.models import Stock
 from tests.factories import UserFactory
 
 
+# Prépare une entreprise de test pour les emplacements.
+# Liens : modèle Enterprise, apps/core/models.py
 @pytest.fixture
 def enterprise():
     return Enterprise.objects.create(name='Hema Test', code='HEMATEST', currency='FB')
 
 
+# Prépare les deux types d'emplacement par défaut : dépôt et boutique.
+# Liens : modèle LocationType, apps/locations/models.py
 @pytest.fixture
 def types(enterprise):
     """The two default location types for the enterprise."""
@@ -29,16 +33,22 @@ def types(enterprise):
     return {'warehouse': wh, 'boutique': bt}
 
 
+# Prépare un admin rattaché à l'entreprise de test.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def admin_user(enterprise):
     return UserFactory(role='admin', enterprise=enterprise)
 
 
+# Prépare un caissier rattaché à l'entreprise de test.
+# Liens : UserFactory de tests/factories.py, modèle User de apps/accounts/models.py
 @pytest.fixture
 def cashier_user(enterprise):
     return UserFactory(role='cashier', enterprise=enterprise)
 
 
+# Prépare un client de test Django déjà connecté avec l'utilisateur donné.
+# Liens : django.test.Client et sa méthode force_login
 def login(user):
     c = Client()
     c.force_login(user)
@@ -48,6 +58,8 @@ def login(user):
 @pytest.mark.django_db
 class TestLocationCreate:
 
+    # Vérifie que le tableau de bord affiche les liens de création et de gestion des types.
+    # Liens : locations:dashboard, apps/locations/views.py
     def test_dashboard_shows_create_and_types_buttons(self, admin_user):
         html = login(admin_user).get(reverse('locations:dashboard')).content.decode()
         assert reverse('locations:create') in html
@@ -55,12 +67,16 @@ class TestLocationCreate:
         assert reverse('locations:type_list') in html
         assert 'Gérer les types' in html
 
+    # Vérifie que le formulaire de création propose les types gérés (dépôt, boutique).
+    # Liens : locations:create, location_create dans apps/locations/views.py
     def test_create_form_lists_managed_types(self, admin_user, types):
         html = login(admin_user).get(reverse('locations:create')).content.decode()
         assert 'name="type_id"' in html
         assert 'Boutique' in html
         assert 'Dépôt (Warehouse)' in html
 
+    # Vérifie que créer un dépôt enregistre le comportement, le type et le créateur.
+    # Liens : locations:create, location_create dans apps/locations/views.py
     def test_create_warehouse(self, admin_user, enterprise, types):
         resp = login(admin_user).post(reverse('locations:create'), {
             'name': 'Dépôt Nord', 'code': 'WH-NORD', 'type_id': types['warehouse'].pk, 'is_active': 'on',
@@ -71,6 +87,8 @@ class TestLocationCreate:
         assert loc.type_ref == types['warehouse']        # custom type kept
         assert loc.created_by == admin_user
 
+    # Vérifie que créer un emplacement de type boutique donne location_type 'boutique'.
+    # Liens : locations:create, location_create dans apps/locations/views.py
     def test_create_boutique(self, admin_user, types):
         resp = login(admin_user).post(reverse('locations:create'), {
             'name': 'Boutique Sud', 'code': 'BT-SUD', 'type_id': types['boutique'].pk, 'is_active': 'on',
@@ -78,6 +96,8 @@ class TestLocationCreate:
         assert resp.status_code == 302
         assert Location.objects.get(code='BT-SUD').location_type == 'boutique'
 
+    # Vérifie que un type personnalisé garde son nom affiché et le comportement boutique.
+    # Liens : locations:create, location_create dans apps/locations/views.py, apps/locations/models.py
     def test_create_with_custom_type(self, admin_user, enterprise):
         pharma = LocationType.objects.create(enterprise=enterprise, name='Pharmacie', behaviour='boutique')
         resp = login(admin_user).post(reverse('locations:create'), {
@@ -89,6 +109,8 @@ class TestLocationCreate:
         assert loc.location_type == 'boutique'           # behaves as boutique
         assert loc.type_display == 'Pharmacie'
 
+    # Vérifie que un type inexistant réaffiche le formulaire sans créer d'emplacement.
+    # Liens : locations:create, location_create dans apps/locations/views.py
     def test_invalid_type_rejected(self, admin_user, types):
         resp = login(admin_user).post(reverse('locations:create'), {
             'name': 'X', 'code': 'X1', 'type_id': '99999', 'is_active': 'on',
@@ -96,6 +118,8 @@ class TestLocationCreate:
         assert resp.status_code == 200
         assert not Location.objects.filter(code='X1').exists()
 
+    # Vérifie que un caissier est redirigé hors de la création d'emplacement.
+    # Liens : locations:create, location_create dans apps/locations/views.py
     def test_cashier_cannot_create(self, cashier_user):
         resp = login(cashier_user).get(reverse('locations:create'))
         assert resp.status_code == 302
@@ -105,6 +129,8 @@ class TestLocationCreate:
 @pytest.mark.django_db
 class TestLocationEdit:
 
+    # Vérifie que la modification change le nom, le type et le comportement de l'emplacement.
+    # Liens : locations:edit, apps/locations/views.py
     def test_edit_changes_name_and_type(self, admin_user, enterprise, types):
         loc = Location.objects.create(enterprise=enterprise, name='Ancien', code='C1',
                                       location_type='boutique', type_ref=types['boutique'])
@@ -117,12 +143,16 @@ class TestLocationEdit:
         assert loc.type_ref == types['warehouse']
         assert loc.location_type == 'warehouse'
 
+    # Vérifie que la page de détail contient le lien de modification de l'emplacement.
+    # Liens : locations:detail, apps/locations/views.py
     def test_detail_shows_edit_button(self, admin_user, enterprise, types):
         loc = Location.objects.create(enterprise=enterprise, name='D', code='D1',
                                       location_type='boutique', type_ref=types['boutique'])
         html = login(admin_user).get(reverse('locations:detail', args=[loc.pk])).content.decode()
         assert reverse('locations:edit', args=[loc.pk]) in html
 
+    # Vérifie que un emplacement inactif reste visible sur le tableau de bord avec son lien.
+    # Liens : locations:dashboard, apps/locations/views.py
     def test_inactive_location_still_listed_on_dashboard(self, admin_user, enterprise, types):
         """An inactive location must remain visible/manageable (not vanish)."""
         loc = Location.objects.create(enterprise=enterprise, name='Prospect', code='PROS1',
@@ -133,6 +163,8 @@ class TestLocationEdit:
         assert 'Inactif' in html
         assert reverse('locations:detail', args=[loc.pk]) in html
 
+    # Vérifie que cocher is_active à la modification réactive un emplacement inactif.
+    # Liens : locations:edit, apps/locations/views.py
     def test_reactivate_via_edit(self, admin_user, enterprise, types):
         loc = Location.objects.create(enterprise=enterprise, name='Re', code='RE1',
                                       location_type='warehouse', type_ref=types['warehouse'], is_active=False)
@@ -146,6 +178,8 @@ class TestLocationEdit:
 @pytest.mark.django_db
 class TestLocationDelete:
 
+    # Vérifie que un emplacement sans stock est supprimé.
+    # Liens : locations:delete, apps/locations/views.py
     def test_delete_empty_location(self, admin_user, enterprise, types):
         loc = Location.objects.create(enterprise=enterprise, name='Empty', code='E1',
                                       location_type='boutique', type_ref=types['boutique'])
@@ -153,6 +187,8 @@ class TestLocationDelete:
         assert resp.status_code == 302
         assert not Location.objects.filter(pk=loc.pk).exists()
 
+    # Vérifie que un emplacement contenant du stock n'est pas supprimé.
+    # Liens : locations:delete, apps/locations/views.py, apps/stock/models.py
     def test_delete_blocked_when_has_stock(self, admin_user, enterprise, types):
         loc = Location.objects.create(enterprise=enterprise, name='Full', code='F1',
                                       location_type='warehouse', type_ref=types['warehouse'])
@@ -168,12 +204,16 @@ class TestLocationDelete:
 @pytest.mark.django_db
 class TestLocationTypeManagement:
 
+    # Vérifie que la liste affiche les types existants et le lien de création.
+    # Liens : locations:type_list, type_list dans apps/locations/views.py
     def test_type_list_renders(self, admin_user, types):
         html = login(admin_user).get(reverse('locations:type_list')).content.decode()
         assert 'Boutique' in html
         assert 'Dépôt (Warehouse)' in html
         assert reverse('locations:type_create') in html
 
+    # Vérifie que un admin crée un type personnalisé avec le comportement choisi.
+    # Liens : locations:type_create, type_create dans apps/locations/views.py
     def test_create_custom_type(self, admin_user, enterprise):
         resp = login(admin_user).post(reverse('locations:type_create'), {
             'name': 'Pharmacie', 'behaviour': 'boutique', 'is_active': 'on',
@@ -182,6 +222,8 @@ class TestLocationTypeManagement:
         t = LocationType.objects.get(enterprise=enterprise, name='Pharmacie')
         assert t.behaviour == 'boutique'
 
+    # Vérifie que un nom de type déjà utilisé réaffiche le formulaire sans créer de doublon.
+    # Liens : locations:type_create, type_create dans apps/locations/views.py
     def test_duplicate_type_name_rejected(self, admin_user, types):
         resp = login(admin_user).post(reverse('locations:type_create'), {
             'name': 'Boutique', 'behaviour': 'boutique', 'is_active': 'on',
@@ -189,6 +231,8 @@ class TestLocationTypeManagement:
         assert resp.status_code == 200
         assert LocationType.objects.filter(name='Boutique').count() == 1
 
+    # Vérifie que changer le comportement d'un type met à jour ses emplacements liés.
+    # Liens : locations:type_edit, type_edit dans apps/locations/views.py
     def test_edit_type_syncs_location_behaviour(self, admin_user, enterprise):
         t = LocationType.objects.create(enterprise=enterprise, name='Kiosque', behaviour='boutique')
         loc = Location.objects.create(enterprise=enterprise, name='K1', code='K1',
@@ -200,12 +244,16 @@ class TestLocationTypeManagement:
         loc.refresh_from_db()
         assert loc.location_type == 'warehouse'
 
+    # Vérifie que un type sans emplacement est supprimé.
+    # Liens : locations:type_delete, type_delete dans apps/locations/views.py
     def test_delete_unused_type(self, admin_user, enterprise):
         t = LocationType.objects.create(enterprise=enterprise, name='Temp', behaviour='boutique')
         resp = login(admin_user).post(reverse('locations:type_delete', args=[t.pk]))
         assert resp.status_code == 302
         assert not LocationType.objects.filter(pk=t.pk).exists()
 
+    # Vérifie que un type utilisé par un emplacement n'est pas supprimé.
+    # Liens : locations:type_delete, type_delete dans apps/locations/views.py
     def test_delete_type_in_use_blocked(self, admin_user, enterprise, types):
         Location.objects.create(enterprise=enterprise, name='Uses BT', code='UB1',
                                 location_type='boutique', type_ref=types['boutique'])

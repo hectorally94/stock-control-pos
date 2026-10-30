@@ -44,12 +44,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'sale_price', 'created_at']
     ordering = ['name']
     
+    # Rôle : utilise ProductListSerializer pour la liste et ProductSerializer pour les autres actions.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/products.py.
     def get_serializer_class(self):
         """Use minimal serializer for list view"""
         if self.action == 'list':
             return ProductListSerializer
         return ProductSerializer
     
+    # Rôle : teste product.stock_info.is_low_stock ; stock_info étant un gestionnaire inverse, la liste reste vide.
+    # Liens : route GET /api/v1/products/low_stock/ ; stock_info vient de Stock.product (apps/stock/models.py).
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
         """
@@ -66,6 +70,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
     
+    # Rôle : renvoie les produits actifs marqués is_popular, sans pagination.
+    # Liens : route GET /api/v1/products/popular/ ; lit Product (apps/products/models.py).
     @action(detail=False, methods=['get'])
     def popular(self, request):
         """
@@ -75,6 +81,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
     
+    # Rôle : renvoie les 50 mouvements les plus récents du produit, sans pagination.
+    # Liens : route GET /api/v1/products/<id>/stock_history/ ; lit StockMovement (apps/stock/models.py).
     @action(detail=True, methods=['get'])
     def stock_history(self, request, pk=None):
         """

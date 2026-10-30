@@ -6,6 +6,9 @@ from apps.settings.models import StoreSetting
 class Command(BaseCommand):
     help = 'Populate default expense categories and store settings'
 
+    # Rôle : crée si absents 9 catégories de dépenses et les paramètres du magasin ; relançable sans doublon.
+    # Liens : python manage.py seed_data ; écrit ExpenseCategory et StoreSetting (apps/settings/models.py).
+    # Les clés loyalty_* créées ici sont lues par apps/customers/signals.py.
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Starting data seeding...'))
         

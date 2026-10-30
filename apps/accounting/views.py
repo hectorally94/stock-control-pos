@@ -15,9 +15,15 @@ from .models import Expense, ExpenseCategory, CashRegisterSession, DailySummary
 from apps.locations.models import Location
 
 
+# Rôle : fabrique un décorateur de vue qui limite l'accès aux rôles donnés.
+# Liens : appliqué aux vues d'ici ; même logique dans apps/customers/views.py et apps/products/views.py.
 def role_required(*roles):
     """Decorator to check if user has required role"""
+    # Rôle : reçoit la vue à protéger et renvoie wrapper, en gardant ses métadonnées grâce à @wraps.
+    # Liens : utilisé uniquement par role_required, dans ce fichier.
     def decorator(view_func):
+        # Rôle : renvoie l'anonyme vers login et le mauvais rôle vers home avec un message, sinon exécute la vue.
+        # Liens : routes login et home de stock_control/urls.py ; lit User.role (apps/accounts/models.py).
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
@@ -34,6 +40,8 @@ def role_required(*roles):
 # EXPENSE CATEGORY VIEWS
 # =============================================================================
 
+# Rôle : liste les catégories de l'entreprise et les globales, avec le nombre et le total de leurs dépenses.
+# Liens : route /accounting/expense-categories/, lien dans expense_list.html ; rend expense_category_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'accountant')
 def expense_category_list(request):
@@ -56,6 +64,8 @@ def expense_category_list(request):
     return render(request, 'accounting/expense_category_list.html', context)
 
 
+# Rôle : crée une catégorie de dépense après contrôle du nom (requis, unique dans l'entreprise).
+# Liens : route /accounting/expense-categories/create/ ; rend expense_category_form.html ; écrit ce modèle.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def expense_category_create(request):
@@ -91,6 +101,8 @@ def expense_category_create(request):
     return render(request, 'accounting/expense_category_form.html', {'mode': 'create'})
 
 
+# Rôle : modifie le nom, la description et l'état actif d'une catégorie de la même entreprise.
+# Liens : route /accounting/expense-categories/<pk>/edit/ ; partage expense_category_form.html avec la création.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def expense_category_edit(request, pk):
@@ -139,6 +151,9 @@ def expense_category_edit(request, pk):
 # EXPENSE VIEWS
 # =============================================================================
 
+# Rôle : liste les dépenses avec filtres (catégorie, paiement, période, recherche), totaux et export PDF/Excel.
+# Liens : route /accounting/expenses/, menu de templates/base.html, apps/core/dashboard_views.py.
+# Appelle export_list_response (apps/core/exports.py) ; rend expense_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'accountant')
 def expense_list(request):
@@ -251,6 +266,8 @@ def expense_list(request):
     return render(request, 'accounting/expense_list.html', context)
 
 
+# Rôle : valide le formulaire (description, montant positif, date) puis crée la dépense au nom de l'utilisateur.
+# Liens : route /accounting/expenses/create/, lien dans expense_list.html ; écrit Expense via expense_form.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'accountant')
 def expense_create(request):
@@ -333,6 +350,8 @@ def expense_create(request):
     return render(request, 'accounting/expense_form.html', context)
 
 
+# Rôle : affiche une dépense, après contrôle qu'elle appartient à l'entreprise de l'utilisateur.
+# Liens : route /accounting/expenses/<pk>/ ; rend expense_detail.html ; cible de redirection de expense_edit.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'accountant')
 def expense_detail(request, pk):
@@ -352,6 +371,8 @@ def expense_detail(request, pk):
     return render(request, 'accounting/expense_detail.html', context)
 
 
+# Rôle : applique les mêmes contrôles que la création puis met à jour la dépense existante.
+# Liens : route /accounting/expenses/<pk>/edit/ ; partage expense_form.html avec expense_create.
 @login_required
 @role_required('admin', 'owner', 'manager', 'accountant')
 def expense_edit(request, pk):
@@ -429,6 +450,8 @@ def expense_edit(request, pk):
     return render(request, 'accounting/expense_form.html', context)
 
 
+# Rôle : supprime définitivement la dépense sur POST ; un GET renvoie simplement vers son détail.
+# Liens : route /accounting/expenses/<pk>/delete/, formulaire de expense_detail.html ; supprime l'Expense.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def expense_delete(request, pk):
@@ -454,6 +477,9 @@ def expense_delete(request, pk):
 # CASH REGISTER SESSION VIEWS
 # =============================================================================
 
+# Rôle : liste les sessions de caisse avec filtres et statistiques ; un caissier ne voit que les siennes.
+# Liens : route /accounting/cash-sessions/, menu de templates/base.html, apps/core/dashboard_views.py.
+# Lit CashRegisterSession (apps/accounting/models.py) ; rend cash_session_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier', 'accountant')
 def cash_session_list(request):
@@ -503,6 +529,8 @@ def cash_session_list(request):
     return render(request, 'accounting/cash_session_list.html', context)
 
 
+# Rôle : ouvre une session avec un solde initial ; si l'utilisateur en a déjà une ouverte, redirige vers elle.
+# Liens : route /accounting/cash-sessions/open/, lien depuis cash_session_list.html ; écrit CashRegisterSession.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier')
 def cash_session_open(request):
@@ -561,6 +589,8 @@ def cash_session_open(request):
     return render(request, 'accounting/cash_session_open.html', context)
 
 
+# Rôle : affiche une session de l'entreprise ; un caissier n'accède qu'à ses propres sessions.
+# Liens : route /accounting/cash-sessions/<pk>/, lien dans templates/dashboards/comptable.html et la liste.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier', 'accountant')
 def cash_session_detail(request, pk):
@@ -585,6 +615,9 @@ def cash_session_detail(request, pk):
     return render(request, 'accounting/cash_session_detail.html', context)
 
 
+# Rôle : ferme la session et calcule l'écart ; le solde attendu reprend le solde d'ouverture, sans les ventes.
+# Liens : route /accounting/cash-sessions/<pk>/close/, liens dans la liste et dans cash_session_detail.html.
+# Écrit CashRegisterSession ; rend cash_session_close.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier')
 def cash_session_close(request, pk):

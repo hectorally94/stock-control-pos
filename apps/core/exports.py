@@ -25,6 +25,8 @@ from django.utils import timezone
 EXPORT_MAX_ROWS = 5000
 
 
+# Rôle : formate une quantité sans zéros inutiles (5.000 donne « 5 ») ; None ou vide donne une chaîne vide.
+# Liens : appelée par apps/products/views.py, apps/locations/views.py et apps/stock/views_frontend.py.
 def fmt_qty(value):
     """Format a quantity without trailing zeros: 5.000 -> '5', 2.5 -> '2.5'."""
     if value is None or value == '':
@@ -33,6 +35,9 @@ def fmt_qty(value):
     return s or '0'
 
 
+# Rôle : si ?export=xlsx ou pdf est présent, génère le fichier (5000 lignes maximum), sinon renvoie None.
+# Liens : appelée par les vues de liste : pos, stock, products, locations, transfers, customers, accounting.
+# Déclenchée par templates/partials/export_buttons.html ; appelle _xlsx_response ou _pdf_response.
 def export_list_response(request, title, headers, rows, filename):
     """Return an xlsx/pdf HttpResponse if ?export= is requested, else None."""
     fmt = request.GET.get('export')
@@ -49,6 +54,8 @@ def export_list_response(request, title, headers, rows, filename):
     return _pdf_response(title, subtitle, headers, rows, file_stem)
 
 
+# Rôle : prépare une valeur : None devient vide, dates au format JJ/MM/AAAA, nombres et textes inchangés.
+# Liens : usage local : _xlsx_response et _trunc.
 def _cell(value):
     """Normalize a value for output (dates -> DD/MM/YYYY, keep numbers)."""
     if value is None:
@@ -61,6 +68,8 @@ def _cell(value):
     return value
 
 
+# Rôle : construit le classeur Excel (titre, en-têtes stylés, largeurs auto) et le renvoie en téléchargement.
+# Liens : appelée par export_list_response ; utilise openpyxl et _cell.
 def _xlsx_response(title, subtitle, headers, rows, file_stem):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -112,6 +121,8 @@ def _xlsx_response(title, subtitle, headers, rows, file_stem):
     return response
 
 
+# Rôle : construit un PDF A4 paysage et le renvoie en « inline » pour l'ouvrir dans le navigateur.
+# Liens : appelée par export_list_response ; utilise reportlab et _trunc.
 def _pdf_response(title, subtitle, headers, rows, file_stem):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
@@ -135,6 +146,8 @@ def _pdf_response(title, subtitle, headers, rows, file_stem):
         Spacer(1, 0.4 * cm),
     ]
 
+    # Rôle : convertit une cellule en texte et la coupe à 60 caractères pour tenir dans le tableau.
+    # Liens : usage local dans _pdf_response ; appelle _cell.
     def _trunc(v, limit=60):
         s = str(_cell(v))
         return s if len(s) <= limit else s[:limit - 1] + '…'

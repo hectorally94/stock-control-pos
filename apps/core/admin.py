@@ -26,6 +26,8 @@ class EnterpriseAdmin(admin.ModelAdmin):
         }),
     )
 
+    # Rôle : renseigne created_by avec l'utilisateur connecté à la création d'une entreprise, pas à la modification.
+    # Liens : appelée par l'admin Django à l'enregistrement ; écrit sur Enterprise (apps/core/models.py).
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user

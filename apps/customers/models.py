@@ -39,9 +39,12 @@ class Customer(models.Model):
             models.Index(fields=['enterprise'], name='idx_customers_enterprise'),
         ]
     
+    # Rôle : renvoie le nom et le téléphone du client, ou « No phone » à défaut.
     def __str__(self):
         return f"{self.name} ({self.phone or 'No phone'})"
     
+    # Rôle : indique si le client a une dette, c'est-à-dire un current_balance supérieur à 0.
+    # Liens : exposée par api/v1/serializers/customers.py ; vérifiée par tests/test_models.py.
     @property
     def has_outstanding_credit(self):
         """Check if customer has unpaid credit"""
@@ -78,9 +81,13 @@ class CustomerCredit(models.Model):
             models.Index(fields=['due_date'], name='idx_customer_credits_due_date'),
         ]
     
+    # Rôle : renvoie le client, le montant restant dû et le statut du crédit.
     def __str__(self):
         return f"{self.customer.name} - {self.remaining_amount} FB (Status: {self.status})"
     
+    # Rôle : indique si l'échéance est dépassée alors que le crédit n'est pas soldé ; faux sans échéance.
+    # Liens : action overdue de api/v1/views/customers.py, api/v1/serializers/customers.py, apps/customers/admin.py.
+    # Sert aussi à l'affichage dans credit_list.html, customer_detail.html et record_payment.html.
     @property
     def is_overdue(self):
         """Check if credit is overdue"""
@@ -116,9 +123,13 @@ class CreditPayment(models.Model):
             models.Index(fields=['user'], name='idx_credit_payments_user'),
         ]
     
+    # Rôle : renvoie le client, le montant et la date du paiement.
     def __str__(self):
         return f"{self.credit.customer.name} - {self.amount} FB ({self.created_at.strftime('%Y-%m-%d')})"
     
+    # Rôle : à la création seulement, déduit le paiement du crédit (statut partial ou paid) et du solde client.
+    # Liens : appelée via record_payment (apps/customers/views.py) et la route API /api/v1/credit-payments/.
+    # Son customer.save() déclenche validate_customer_credit_limit (apps/customers/signals.py).
     def save(self, *args, **kwargs):
         """Update credit remaining amount when payment is recorded"""
         is_new = self.pk is None

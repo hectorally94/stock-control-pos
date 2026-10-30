@@ -36,10 +36,14 @@ class Stock(models.Model):
             models.Index(fields=['location'], name='idx_stock_location'),
         ]
 
+    # Rôle : retourne produit, emplacement éventuel, quantité et unité sur une ligne.
     def __str__(self):
         location_str = f" @ {self.location.name}" if self.location else ""
         return f"{self.product.name}{location_str}: {self.quantity} {self.product.unit}"
 
+    # Rôle : vrai si quantité <= seuil du produit (Product.min_stock_threshold), pas celui de l'emplacement.
+    # Liens : lue par apps/stock/views_frontend.py, apps/core/dashboard_views.py,
+    # apps/reports/utils/excel_generator.py et api/v1/views/stock.py.
     @property
     def is_low_stock(self):
         """Check if stock is below minimum threshold"""
@@ -115,10 +119,14 @@ class StockMovement(models.Model):
             models.Index(fields=['location'], name='idx_stock_mvmt_location'),
         ]
 
+    # Rôle : retourne type, produit, emplacement éventuel, quantité et raison sur une ligne.
     def __str__(self):
         location_str = f" @ {self.location.name}" if self.location else ""
         return f"{self.movement_type.upper()}: {self.product.name}{location_str} - {self.quantity} ({self.reason})"
 
+    # Rôle : à la création seulement, ajoute (entrée) ou retire (sortie) la quantité dans Stock et LocationStock.
+    # Liens : appelée par entry_view, Transfer.send/receive/cancel, les signaux de apps/pos/signals.py et l'API
+    # stock-movements (api/v1/views/stock.py) ; LocationStock n'est mis à jour que si le mouvement a un emplacement.
     def save(self, *args, **kwargs):
         """Update stock quantity when movement is created.
 

@@ -28,6 +28,7 @@ class Category(models.Model):
             models.Index(fields=['enterprise'], name='idx_categories_enterprise'),
         ]
 
+    # Rôle : renvoie le nom de la catégorie comme libellé de l'objet.
     def __str__(self):
         return self.name
 
@@ -78,9 +79,13 @@ class Product(models.Model):
             models.Index(fields=['enterprise'], name='idx_products_enterprise'),
         ]
 
+    # Rôle : renvoie le nom du produit suivi de son code-barres ou, à défaut, de son SKU.
     def __str__(self):
         return f"{self.name} ({self.barcode or self.sku})"
 
+    # Rôle : calcule la marge en % par rapport au prix d'achat ; renvoie 0 si ce prix est nul.
+    # Liens : api/v1/serializers/products.py, apps/products/admin.py, product_list.html et product_detail.html.
+    # Même formule que updateMargin dans apps/products/templates/products/product_form.html.
     @property
     def profit_margin(self):
         """Calculate profit margin percentage"""
@@ -109,5 +114,6 @@ class ProductPackaging(models.Model):
             models.Index(fields=['barcode'], name='idx_product_packagings_barcode'),
         ]
     
+    # Rôle : renvoie le produit, le nom du conditionnement et le nombre d'unités qu'il contient.
     def __str__(self):
         return f"{self.product.name} - {self.name} ({self.quantity_per_unit} units)"

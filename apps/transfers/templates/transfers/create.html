@@ -192,6 +192,9 @@
 
 {{ products_json|json_script:"products-data" }}
 <script>
+// Rôle : crée l'état Alpine.js du formulaire de transfert : source, destination et lignes d'articles.
+// Liens : appelée par x-data du formulaire ; lit le JSON products-data issu de transfer_create,
+// qui reçoit aussi le POST du formulaire (apps/transfers/views.py).
 function transferForm() {
     return {
         sourceLocation: '{% if preselected_source %}{{ preselected_source.pk }}{% endif %}',
@@ -200,48 +203,68 @@ function transferForm() {
         items: [
             { product: '', search: '', open: false, quantity: '' }
         ],
+        // Rôle : place le produit transmis par ?product= dans la première ligne d'articles.
+        // Liens : appelée automatiquement par Alpine.js ; le produit vient de preselected_product (transfer_create).
         init() {
             {% if preselected_product %}
             const p = this.products.find(x => String(x.id) === '{{ preselected_product.pk }}');
             if (p) { this.items[0].product = p.id; this.items[0].search = p.label; }
             {% endif %}
         },
+        // Rôle : ajoute une ligne d'article vide au formulaire.
+        // Liens : appelée par les boutons « Ajouter » de ce template.
         addItem() {
             this.items.push({ product: '', search: '', open: false, quantity: '' });
         },
+        // Rôle : retire la ligne d'article à la position donnée.
+        // Liens : appelée par le bouton corbeille, visible seulement s'il reste plus d'une ligne.
         removeItem(index) {
             this.items.splice(index, 1);
         },
         // Stock available for product p at the selected source
+        // Rôle : retourne le stock du produit p à la source choisie, ou 0 s'il n'y en a pas.
+        // Liens : lit p.stock (LocationStock via transfer_create) ; utilisée par stockFor() et availableProducts().
         stockAt(p) {
             return (p.stock && p.stock[this.sourceLocation]) || 0;
         },
         // Stock available for the product selected in an item row
+        // Rôle : retourne le stock à la source du produit choisi dans une ligne.
+        // Liens : utilisée par le max du champ quantité, l'affichage « Disponible », qtyValid() et updateProducts().
         stockFor(item) {
             const p = this.products.find(x => String(x.id) === String(item.product));
             return p ? this.stockAt(p) : 0;
         },
         // Products in stock at the source, filtered by the row's search text
+        // Rôle : retourne les produits en stock à la source, filtrés par le texte saisi dans la ligne.
+        // Liens : appelée par le x-for de la liste déroulante et son message vide ; utilise stockAt().
         availableProducts(item) {
             let list = this.products.filter(p => this.stockAt(p) > 0);
             const q = (item.search || '').trim().toLowerCase();
             if (q) list = list.filter(p => p.label.toLowerCase().includes(q));
             return list;
         },
+        // Rôle : associe le produit p à la ligne, affiche son libellé et ferme la liste.
+        // Liens : appelée au clic dans la liste ; item.product remplit le champ caché product_id lu par transfer_create.
         selectProduct(item, p) {
             item.product = p.id;
             item.search = p.label;
             item.open = false;
         },
+        // Rôle : retire le produit de la ligne, vide sa recherche et rouvre la liste.
+        // Liens : appelée par le bouton de vidage du champ de recherche de la ligne.
         clearProduct(item) {
             item.product = '';
             item.search = '';
             item.open = true;
         },
+        // Rôle : vrai si la ligne a un produit et une quantité positive ne dépassant pas le stock de la source.
+        // Liens : appelée par la bordure rouge du champ quantité et par isValid() ; utilise stockFor().
         qtyValid(item) {
             const qty = parseFloat(item.quantity);
             return item.product && qty > 0 && qty <= this.stockFor(item);
         },
+        // Rôle : vrai si source et destination sont choisies et différentes et si toutes les lignes sont valides.
+        // Liens : active ou désactive le bouton d'envoi ; transfer_create refait ses contrôles côté serveur.
         isValid() {
             return this.sourceLocation &&
                    this.destinationLocation &&
@@ -249,6 +272,8 @@ function transferForm() {
                    this.items.length > 0 &&
                    this.items.every(item => this.qtyValid(item));
         },
+        // Rôle : quand la source change, retire des lignes les produits sans stock à ce nouvel emplacement.
+        // Liens : appelée par @change de la liste Source ; utilise stockFor().
         updateProducts() {
             // Source changed: drop selected products that have no stock there
             this.items.forEach(item => {
@@ -258,6 +283,8 @@ function transferForm() {
                 }
             });
         },
+        // Rôle : formate un nombre à la française, avec au plus 3 décimales.
+        // Liens : appelée par ce template pour afficher le stock disponible.
         fmt(n) {
             return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 3 });
         }

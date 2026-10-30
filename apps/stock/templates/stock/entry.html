@@ -175,6 +175,9 @@
     </div>
 
     <script>
+        // Rôle : crée l'état Alpine.js de la liste de produits avec recherche du formulaire d'entrée de stock.
+        // Liens : appelée par x-data du formulaire ; lit le JSON products-data issu de entry_view,
+        // qui reçoit aussi le POST du formulaire (apps/stock/views_frontend.py).
         function stockEntryForm(preselectedId) {
             return {
                 open: false,
@@ -182,6 +185,8 @@
                 selectedId: '',
                 cost: '',
                 products: JSON.parse(document.getElementById('products-data').textContent),
+                // Rôle : sélectionne au chargement le produit transmis par ?product= s'il existe dans la liste.
+                // Liens : appelée automatiquement par Alpine.js ; appelle select() ; l'id vient de entry_view.
                 init() {
                     // Pre-select the product passed via ?product=<pk> (fills name + cost).
                     if (preselectedId) {
@@ -189,11 +194,15 @@
                         if (p) this.select(p);
                     }
                 },
+                // Rôle : retourne les produits dont le libellé contient le texte saisi (sans tenir compte de la casse).
+                // Liens : appelée par le x-for et le message « Aucun produit trouvé » de ce template, et par selectFirst().
                 filtered() {
                     const q = this.search.trim().toLowerCase();
                     if (!q) return this.products;
                     return this.products.filter(p => p.label.toLowerCase().includes(q));
                 },
+                // Rôle : retient le produit, ferme la liste et préremplit le coût avec p.price, qui vaut le prix de vente.
+                // Liens : appelée au clic dans la liste, par init() et selectFirst() ; price vient de entry_view (sale_price).
                 select(p) {
                     this.selectedId = p.id;
                     this.search = p.label;
@@ -201,16 +210,22 @@
                     // Auto-fill the unit cost from the product's purchase price.
                     if (p.price && p.price > 0) this.cost = p.price;
                 },
+                // Rôle : sélectionne le premier produit filtré quand l'utilisateur appuie sur Entrée.
+                // Liens : appelée par @keydown.enter du champ de recherche ; utilise filtered() et select().
                 selectFirst() {
                     const results = this.filtered();
                     if (results.length > 0) this.select(results[0]);
                 },
                 // Typing over a chosen product drops the selection, so the form
                 // can never submit a product the user is no longer looking at.
+                // Rôle : annule la sélection dès que le texte saisi ne correspond plus au produit choisi.
+                // Liens : appelée par @input du champ de recherche ; sans selectedId, le bouton d'envoi reste désactivé.
                 syncSelection() {
                     const chosen = this.products.find(p => p.id === this.selectedId);
                     if (!chosen || chosen.label !== this.search) this.selectedId = '';
                 },
+                // Rôle : vide la recherche et la sélection, rouvre la liste et remet le curseur dans le champ.
+                // Liens : appelée par le bouton de vidage du champ de recherche ; le coût déjà saisi n'est pas effacé.
                 clearSelection() {
                     this.search = '';
                     this.selectedId = '';

@@ -107,15 +107,22 @@ class Transfer(models.Model):
             models.Index(fields=['created_at'], name='idx_transfer_created'),
         ]
 
+    # Rôle : retourne la référence suivie de l'emplacement source et de la destination.
     def __str__(self):
         return f"{self.reference}: {self.source_location.name} → {self.destination_location.name}"
 
+    # Rôle : refuse une source égale à la destination, ou deux emplacements d'entreprises différentes.
+    # Liens : appelée par Django via full_clean(), donc par les formulaires de l'admin ;
+    # transfer_create (apps/transfers/views.py) refait son propre contrôle source/destination.
     def clean(self):
         if self.source_location == self.destination_location:
             raise ValidationError('La source et la destination doivent être différentes.')
         if self.source_location.enterprise != self.destination_location.enterprise:
             raise ValidationError('Les emplacements doivent appartenir à la même entreprise.')
 
+    # Rôle : génère une référence TRF-AAAAMMJJ-XXXX si elle est vide, en suivant la dernière du jour.
+    # Liens : appelée par Django ; déclenchée par transfer_create, send(), receive(), cancel(),
+    # l'admin et le serializer api/v1/serializers/transfers.py.
     def save(self, *args, **kwargs):
         if not self.reference:
             # Generate reference: TRF-YYYYMMDD-XXXX
@@ -134,6 +141,9 @@ class Transfer(models.Model):
 
         super().save(*args, **kwargs)
 
+    # Rôle : vérifie le stock de chaque article à la source, crée les sorties transfer_out, passe en in_transit.
+    # Liens : appelée par transfer_send, l'admin, api/v1/views/transfers.py et seed_scenario ;
+    # lit LocationStock ; StockMovement.save() déduit le stock.
     def send(self, user):
         """Mark the transfer as sent/in transit.
 
@@ -179,6 +189,9 @@ class Transfer(models.Model):
         self.sent_by = user
         self.save()
 
+    # Rôle : crée les entrées transfer_in à destination (received_quantity si renseignée, sinon quantity).
+    # Liens : appelée par transfer_receive, l'admin, api/v1/views/transfers.py et seed_scenario ;
+    # StockMovement.save() ajoute le stock.
     def receive(self, user):
         """Mark the transfer as received; records ENTRY movements at destination."""
         if self.status != 'in_transit':
@@ -206,6 +219,8 @@ class Transfer(models.Model):
         self.received_by = user
         self.save()
 
+    # Rôle : annule le transfert ; s'il est en transit, recrédite la source par une entrée de raison « correction ».
+    # Liens : appelée par transfer_cancel et api/v1/views/transfers.py ; StockMovement.save() remet le stock.
     def cancel(self, user, reason):
         """Cancel the transfer; returns goods to source if already in transit."""
         if self.status in ['received', 'cancelled']:
@@ -234,10 +249,14 @@ class Transfer(models.Model):
         self.cancellation_reason = reason
         self.save()
 
+    # Rôle : compte les lignes d'articles du transfert (requête en base à chaque lecture).
+    # Liens : lue par apps/transfers/admin.py, le template list.html et api/v1/serializers/transfers.py.
     @property
     def total_items(self):
         return self.items.count()
 
+    # Rôle : additionne les quantités envoyées de toutes les lignes ; retourne 0 s'il n'y en a pas.
+    # Liens : exposée par TransferSerializer (api/v1/serializers/transfers.py).
     @property
     def total_quantity(self):
         return self.items.aggregate(total=models.Sum('quantity'))['total'] or 0
@@ -291,9 +310,12 @@ class TransferItem(models.Model):
             models.Index(fields=['transfer', 'product'], name='idx_transitem_transfer_prod'),
         ]
 
+    # Rôle : retourne le nom du produit et la quantité envoyée.
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
 
+    # Rôle : retourne reçu moins envoyé ; vaut 0 tant que la quantité reçue n'est pas renseignée.
+    # Liens : lue par apps/transfers/admin.py, le template detail.html et api/v1/serializers/transfers.py.
     @property
     def variance(self):
         """Difference between sent and received quantity."""
@@ -301,6 +323,8 @@ class TransferItem(models.Model):
             return self.received_quantity - self.quantity
         return 0
 
+    # Rôle : retourne quantité envoyée fois coût unitaire, ou None si le coût est vide ou nul.
+    # Liens : exposée par le serializer d'articles de api/v1/serializers/transfers.py.
     @property
     def total_cost(self):
         if self.unit_cost:

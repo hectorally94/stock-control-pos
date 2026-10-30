@@ -147,6 +147,8 @@
         </div>
 
         <script>
+            // Rôle : remplit le formulaire de connexion avec le compte de test choisi, puis l'envoie.
+            // Liens : appelée par les boutons de connexion rapide ; envoi à la route login de stock_control/urls.py.
             function quickLogin(username, password) {
                 document.querySelector('input[name="username"]').value = username;
                 document.querySelector('input[name="password"]').value = password;

@@ -48,6 +48,7 @@ class User(AbstractUser):
             models.Index(fields=['email'], name='idx_users_email'),
         ]
     
+    # Rôle : affiche l'utilisateur sous la forme « nom complet (libellé du rôle) ».
     def __str__(self):
         return f"{self.get_full_name()} ({self.get_role_display()})"
 
@@ -85,5 +86,6 @@ class ActionLog(models.Model):
             models.Index(fields=['action_type'], name='idx_action_logs_type'),
         ]
     
+    # Rôle : résume une entrée du journal : utilisateur, action, type d'entité et date.
     def __str__(self):
         return f"{self.user.username} - {self.action_type} - {self.entity_type} ({self.created_at})"

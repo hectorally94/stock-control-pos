@@ -4,6 +4,8 @@ import os
 import sys
 
 
+# Rôle : choisit stock_control.settings par défaut et exécute la commande Django de la ligne de commande.
+# Liens : point d'entrée de « python manage.py ... » ; exécute par exemple apps/core/management/commands/.
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'stock_control.settings')

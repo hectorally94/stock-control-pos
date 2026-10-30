@@ -445,6 +445,8 @@
 </div>
 
 <script>
+// Rôle : composant Alpine.js de la caisse : panier, client, paiement, recherche et enregistrement de la vente.
+// Liens : activé par x-data dans cette page ; dialogue avec les vues de apps/pos/views_frontend.py.
 function posApp() {
     return {
         cart: [],
@@ -467,6 +469,8 @@ function posApp() {
         productsCount: {{ popular_products|length }},
         currentTime: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
 
+        // Rôle : met à jour l'heure chaque minute et active les raccourcis F2 (recherche) et F12 (valider la vente).
+        // Liens : appelée automatiquement par Alpine.js ; F12 appelle completeSale().
         init() {
             // Update time every minute
             setInterval(() => {
@@ -498,6 +502,8 @@ function posApp() {
             return this.cart.reduce((sum, item) => sum + item.quantity, 0);
         },
 
+        // Rôle : ajoute un produit au panier local ou augmente sa quantité, sans dépasser le stock s'il est non nul.
+        // Liens : @click de cette page et de apps/pos/templates/pos/partials/product_grid.html ; aucun appel serveur.
         addToCart(id, name, price, stock) {
             const existing = this.cart.find(item => item.id === id);
             if (existing) {
@@ -516,10 +522,14 @@ function posApp() {
             }
         },
 
+        // Rôle : retire une ligne du panier local.
+        // Liens : @click du panier dans cette page et decrementQuantity().
         removeFromCart(index) {
             this.cart.splice(index, 1);
         },
 
+        // Rôle : ajoute 1 à la quantité d'une ligne, sans dépasser le stock s'il est non nul.
+        // Liens : @click du bouton + du panier dans cette page.
         incrementQuantity(index) {
             const item = this.cart[index];
             if (item.quantity < item.stock || item.stock === 0) {
@@ -527,6 +537,8 @@ function posApp() {
             }
         },
 
+        // Rôle : retire 1 à la quantité d'une ligne, ou supprime la ligne si la quantité vaut 1.
+        // Liens : @click du bouton - du panier ; appelle removeFromCart().
         decrementQuantity(index) {
             const item = this.cart[index];
             if (item.quantity > 1) {
@@ -536,18 +548,25 @@ function posApp() {
             }
         },
 
+        // Rôle : applique la quantité saisie en entier, au minimum 1 et au maximum le stock s'il est non nul.
+        // Liens : @change du champ quantité du panier dans cette page.
         updateQuantity(index, value) {
             const item = this.cart[index];
             const qty = parseInt(value) || 1;
             item.quantity = Math.max(1, Math.min(qty, item.stock || qty));
         },
 
+        // Rôle : vide le panier local après confirmation de l'utilisateur.
+        // Liens : @click du bouton de vidage du panier dans cette page.
         clearCart() {
             if (confirm('Vider le panier ?')) {
                 this.cart = [];
             }
         },
 
+        // Rôle : charge les produits selon la recherche et la catégorie, puis remplace le HTML de #product-grid.
+        // Liens : fetch vers pos:search_products (search_products, apps/pos/views_frontend.py) ;
+        // appelée par le champ de recherche, clearSearch(), filterByCategory() et refreshProducts().
         async searchProducts() {
             this.isLoading = true;
             const params = new URLSearchParams();
@@ -570,11 +589,15 @@ function posApp() {
             this.isLoading = false;
         },
 
+        // Rôle : efface le texte recherché et recharge la grille des produits.
+        // Liens : @click du bouton d'effacement de la recherche ; appelle searchProducts().
         clearSearch() {
             this.searchQuery = '';
             this.searchProducts();
         },
 
+        // Rôle : recharge la grille pour afficher le stock à jour : recherche active ou produits populaires.
+        // Liens : appelée par completeSale() et filterByCategory() ; utilise searchProducts() ou pos:search_products.
         async refreshProducts() {
             // Refresh the product grid to show updated stock
             // If we're viewing a category or search results, use searchProducts
@@ -597,6 +620,8 @@ function posApp() {
             }
         },
 
+        // Rôle : retient la catégorie choisie et recharge la grille (null = populaires, 'all' = toutes).
+        // Liens : @click des boutons de catégorie ; appelle refreshProducts() ou searchProducts().
         filterByCategory(categoryId) {
             this.selectedCategory = categoryId;
             if (categoryId === null) {
@@ -607,6 +632,9 @@ function posApp() {
             }
         },
 
+        // Rôle : envoie le nouveau client au serveur, l'ajoute à la liste et le sélectionne pour la vente.
+        // Liens : @submit du formulaire de cette page ; fetch POST vers pos:create_customer
+        // (create_customer_view, apps/pos/views_frontend.py).
         async createCustomer() {
             if (!this.newCustomer.name) return;
 
@@ -637,6 +665,9 @@ function posApp() {
             }
         },
 
+        // Rôle : envoie le panier au serveur, puis vide le panier, recharge les produits et propose le reçu.
+        // Liens : bouton de validation et F12 ; fetch POST vers pos:create_sale (create_sale_view,
+        // apps/pos/views_frontend.py) ; ouvre /pos/sales/<id>/receipt/ (sale_receipt_pdf).
         async completeSale() {
             if (this.cart.length === 0 || this.isProcessing) return;
             if (this.payment_method === 'credit' && !this.customer_id) {

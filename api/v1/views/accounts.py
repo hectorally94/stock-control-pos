@@ -24,18 +24,24 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'username', 'role']
     ordering = ['-created_at']
     
+    # Rôle : utilise UserListSerializer pour la liste et UserSerializer pour toutes les autres actions.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/accounts.py.
     def get_serializer_class(self):
         """Use minimal serializer for list view"""
         if self.action == 'list':
             return UserListSerializer
         return UserSerializer
     
+    # Rôle : lecture et modification pour admin, owner, manager ; les autres actions pour admin et owner seulement.
+    # Liens : appelée par DRF ; applique IsAdminOrManager ou IsAdminOnly (api/v1/permissions.py).
     def get_permissions(self):
         """Manager can view users but only admin can create/delete"""
         if self.action in ['list', 'retrieve', 'update', 'partial_update']:
             return [IsAdminOrManager()]
         return [IsAdminOnly()]
     
+    # Rôle : renvoie les rôles disponibles sous forme de paires value et label.
+    # Liens : route GET /api/v1/users/roles/ ; lit User.ROLE_CHOICES (apps/accounts/models.py).
     @action(detail=False, methods=['get'])
     def roles(self, request):
         """Get available user roles"""
@@ -62,6 +68,8 @@ class ActionLogViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['created_at']
     ordering = ['-created_at']
     
+    # Rôle : renvoie les 50 entrées les plus récentes du journal, sans pagination.
+    # Liens : route GET /api/v1/action-logs/recent/ ; lit ActionLog (apps/accounts/models.py).
     @action(detail=False, methods=['get'])
     def recent(self, request):
         """Get recent action logs (last 50)"""

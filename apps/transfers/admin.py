@@ -40,10 +40,14 @@ class TransferAdmin(admin.ModelAdmin):
         }),
     )
 
+    # Rôle : affiche le nombre d'articles du transfert dans la colonne « Articles » de l'admin.
+    # Liens : colonne de list_display ; lit la propriété Transfer.total_items (apps/transfers/models.py).
     def total_items(self, obj):
         return obj.total_items
     total_items.short_description = 'Articles'
 
+    # Rôle : renseigne created_by avec l'utilisateur connecté, seulement à la création du transfert.
+    # Liens : appelée par l'admin Django à l'enregistrement ; déclenche ensuite Transfer.save().
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -51,6 +55,8 @@ class TransferAdmin(admin.ModelAdmin):
 
     actions = ['send_transfers', 'receive_transfers']
 
+    # Rôle : envoie les transferts cochés en brouillon ou en attente ; signale chaque succès ou erreur séparément.
+    # Liens : action de l'admin Django ; appelle Transfer.send() (apps/transfers/models.py).
     @admin.action(description='Envoyer les transferts sélectionnés')
     def send_transfers(self, request, queryset):
         for transfer in queryset.filter(status__in=['draft', 'pending']):
@@ -60,6 +66,8 @@ class TransferAdmin(admin.ModelAdmin):
             except Exception as e:
                 self.message_user(request, f"Erreur pour {transfer.reference}: {e}", level='error')
 
+    # Rôle : réceptionne les transferts cochés en transit ; signale chaque succès ou erreur séparément.
+    # Liens : action de l'admin Django ; appelle Transfer.receive() (apps/transfers/models.py).
     @admin.action(description='Recevoir les transferts sélectionnés')
     def receive_transfers(self, request, queryset):
         for transfer in queryset.filter(status='in_transit'):
@@ -77,6 +85,8 @@ class TransferItemAdmin(admin.ModelAdmin):
     search_fields = ['product__name', 'transfer__reference']
     raw_id_fields = ['transfer', 'product']
 
+    # Rôle : affiche l'écart entre quantités reçue et envoyée dans la colonne « Écart » de l'admin.
+    # Liens : colonne de list_display ; lit la propriété TransferItem.variance (apps/transfers/models.py).
     def variance(self, obj):
         return obj.variance
     variance.short_description = 'Écart'

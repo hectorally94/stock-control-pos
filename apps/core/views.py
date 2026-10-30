@@ -10,6 +10,9 @@ from django.conf import settings
 from django.http import HttpResponse, Http404
 
 
+# Rôle : renvoie le guide HTML tel quel, sans connexion ni moteur de templates ; 404 si le fichier manque.
+# Liens : route /guide/ de stock_control/urls.py, lien dans templates/login.html ;
+# lit docs/functional_documentation.html.
 def functional_documentation(request):
     """Serve the standalone functional guide.
 

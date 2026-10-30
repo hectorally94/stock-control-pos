@@ -27,18 +27,24 @@ class CustomerViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'total_purchases', 'current_balance', 'created_at']
     ordering = ['name']
     
+    # Rôle : utilise CustomerListSerializer pour la liste et CustomerSerializer pour les autres actions.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/customers.py.
     def get_serializer_class(self):
         """Use minimal serializer for list view"""
         if self.action == 'list':
             return CustomerListSerializer
         return CustomerSerializer
     
+    # Rôle : réserve modification et suppression à IsAdminOrManager ; le reste, création comprise, à IsCashier.
+    # Liens : appelée par DRF ; classes définies dans api/v1/permissions.py.
     def get_permissions(self):
         """Cashiers can view/create, admin/manager can update/delete"""
         if self.action in ['update', 'partial_update', 'destroy']:
             return [IsAdminOrManager()]
         return [IsCashier()]
     
+    # Rôle : renvoie les 10 clients actifs ayant le plus grand total_purchases.
+    # Liens : route GET /api/v1/customers/top_customers/ ; total alimenté par apps/customers/signals.py.
     @action(detail=False, methods=['get'])
     def top_customers(self, request):
         """
@@ -48,6 +54,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(customers, many=True)
         return Response(serializer.data)
     
+    # Rôle : renvoie les clients actifs dont current_balance est supérieur à 0.
+    # Liens : route GET /api/v1/customers/with_credits/ ; solde modifié par apps/customers/signals.py.
     @action(detail=False, methods=['get'])
     def with_credits(self, request):
         """
@@ -72,6 +80,8 @@ class CustomerCreditViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'due_date', 'remaining_amount']
     ordering = ['-created_at']
     
+    # Rôle : filtre en Python les crédits en retard selon la propriété is_overdue, sans pagination.
+    # Liens : route GET /api/v1/customer-credits/overdue/ ; is_overdue est dans apps/customers/models.py.
     @action(detail=False, methods=['get'])
     def overdue(self, request):
         """
@@ -96,6 +106,8 @@ class CreditPaymentViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at']
     ordering = ['-created_at']
     
+    # Rôle : enregistre le paiement de crédit au nom de l'utilisateur connecté.
+    # Liens : POST /api/v1/credit-payments/ ; CreditPayment.save() (apps/customers/models.py) réduit le crédit.
     def perform_create(self, serializer):
         """Set current user when creating payment"""
         serializer.save(user=self.request.user)

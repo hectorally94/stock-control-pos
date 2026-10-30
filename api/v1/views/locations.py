@@ -28,16 +28,22 @@ class LocationViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
     ordering_fields = ['name', 'location_type', 'created_at']
     ordering = ['location_type', 'name']
 
+    # Rôle : utilise LocationListSerializer pour la liste et LocationSerializer pour les autres actions.
+    # Liens : appelée par DRF ; serializers dans api/v1/serializers/locations.py.
     def get_serializer_class(self):
         if self.action == 'list':
             return LocationListSerializer
         return LocationSerializer
 
+    # Rôle : remplace la version du mixin pour renseigner à la fois l'entreprise et le créateur de l'emplacement.
+    # Liens : POST /api/v1/locations/ ; remplace EnterpriseViewSetMixin.perform_create (apps/core/mixins.py).
     def perform_create(self, serializer):
         user = self.request.user
         enterprise = user.enterprise if hasattr(user, 'enterprise') else None
         serializer.save(enterprise=enterprise, created_by=user)
 
+    # Rôle : renvoie les emplacements de type warehouse de l'entreprise, sans pagination.
+    # Liens : route GET /api/v1/locations/warehouses/ ; filtrage d'entreprise via apps/core/mixins.py.
     @action(detail=False, methods=['get'])
     def warehouses(self, request):
         """List only warehouses"""
@@ -45,6 +51,8 @@ class LocationViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = LocationListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie les emplacements de type boutique de l'entreprise, sans pagination.
+    # Liens : route GET /api/v1/locations/boutiques/ ; filtrage d'entreprise via apps/core/mixins.py.
     @action(detail=False, methods=['get'])
     def boutiques(self, request):
         """List only boutiques"""
@@ -52,6 +60,8 @@ class LocationViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = LocationListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie toutes les lignes de stock de l'emplacement visé, sans pagination.
+    # Liens : route GET /api/v1/locations/<id>/stock/ ; lit LocationStock (apps/locations/models.py).
     @action(detail=True, methods=['get'])
     def stock(self, request, pk=None):
         """Get stock levels for a location"""
@@ -60,6 +70,8 @@ class LocationViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = LocationStockSerializer(stocks, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie le stock faible de l'emplacement selon le seuil de LocationStock, pas celui du produit.
+    # Liens : route GET /api/v1/locations/<id>/low_stock/ ; LocationStock.is_low_stock (apps/locations/models.py).
     @action(detail=True, methods=['get'])
     def low_stock(self, request, pk=None):
         """Get low stock items for a location"""
@@ -89,6 +101,9 @@ class LocationStockViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
     ordering_fields = ['quantity', 'updated_at']
     ordering = ['location', 'product']
 
+    # Rôle : filtre via le mixin, puis par entreprise et par emplacement de l'utilisateur (sauf owner et admin).
+    # Liens : appelée par DRF ; EnterpriseViewSetMixin (apps/core/mixins.py) filtre sur enterprise.
+    # LocationStock n'a pas ce champ : hors superuser, un utilisateur avec entreprise obtient une FieldError.
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()
@@ -103,6 +118,8 @@ class LocationStockViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
 
         return queryset
 
+    # Rôle : renvoie les lignes de stock faible visibles par l'utilisateur, filtrées en Python.
+    # Liens : route GET /api/v1/location-stocks/low_stock_alerts/ ; get_queryset() et LocationStock.is_low_stock.
     @action(detail=False, methods=['get'])
     def low_stock_alerts(self, request):
         """Get all low stock alerts"""
@@ -111,6 +128,8 @@ class LocationStockViewSet(EnterpriseViewSetMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(low_stock, many=True)
         return Response(serializer.data)
 
+    # Rôle : renvoie les lignes visibles par l'utilisateur dont la quantité est nulle ou négative.
+    # Liens : route GET /api/v1/location-stocks/out_of_stock/ ; dépend de get_queryset() ; lit LocationStock.
     @action(detail=False, methods=['get'])
     def out_of_stock(self, request):
         """Get all out of stock items"""

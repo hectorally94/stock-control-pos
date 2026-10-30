@@ -34,6 +34,9 @@ REASON_LABELS = {
 }
 
 
+# Rôle : calcule les compteurs, listes d'alertes et données JSON des graphiques (14 jours, mois en cours).
+# Liens : route /stock/ ; lit Stock, StockMovement, Location, LocationStock ; lien depuis templates/base.html ;
+# rend apps/stock/templates/stock/dashboard.html, dont les graphiques Chart.js utilisent ces données.
 @login_required
 def dashboard_view(request):
     """Stock dashboard with charts and analytics"""
@@ -220,6 +223,9 @@ def dashboard_view(request):
     return render(request, 'stock/dashboard.html', context)
 
 
+# Rôle : affiche et traite le formulaire d'entrée de stock ; accepte ?product=, ?location= et ?next=.
+# Liens : route /stock/entry/ ; crée un StockMovement, dont save() met à jour le stock ;
+# rend apps/stock/templates/stock/entry.html (products_json alimente stockEntryForm).
 @login_required
 def entry_view(request):
     """Stock entry form"""
@@ -374,6 +380,9 @@ def entry_view(request):
     return render(request, 'stock/entry.html', context)
 
 
+# Rôle : liste le stock positif en deux onglets (par produit, par produit et emplacement), filtres et export.
+# Liens : route /stock/in-stock/ ; lit Stock ; export via export_list_response (apps/core/exports.py) ;
+# rend apps/stock/templates/stock/in_stock.html ; atteinte depuis apps/stock/templates/stock/dashboard.html.
 @login_required
 def in_stock_view(request):
     """Products in stock — two views: by product (the distinct count) and by
@@ -489,6 +498,8 @@ def in_stock_view(request):
     return render(request, 'stock/in_stock.html', context)
 
 
+# Rôle : prépare l'export PDF/Excel commun aux listes de stock ; retourne None si ?export= est absent.
+# Liens : appelée par low_stock_view et out_of_stock_view ; utilise export_list_response (apps/core/exports.py).
 def _stock_list_export(request, title, filename, items):
     """Shared export for the Stock Faible / Rupture de Stock lists."""
     return export_list_response(
@@ -510,6 +521,9 @@ def _stock_list_export(request, title, filename, items):
     )
 
 
+# Rôle : liste les lignes Stock sous le seuil du produit mais encore positives ; le filtre se fait en Python.
+# Liens : route /stock/low-stock/ ; lit Stock.is_low_stock ; lien de apps/core/dashboard_views.py ;
+# rend apps/stock/templates/stock/stock_list.html.
 @login_required
 def low_stock_view(request):
     """List products with low stock"""
@@ -543,6 +557,9 @@ def low_stock_view(request):
     return render(request, 'stock/stock_list.html', context)
 
 
+# Rôle : liste les lignes Stock à quantité nulle ou négative, avec le même template que le stock faible.
+# Liens : route /stock/out-of-stock/ ; utilise _stock_list_export ; lien depuis apps/core/dashboard_views.py ;
+# rend apps/stock/templates/stock/stock_list.html.
 @login_required
 def out_of_stock_view(request):
     """List products that are out of stock"""
@@ -572,6 +589,9 @@ def out_of_stock_view(request):
     return render(request, 'stock/stock_list.html', context)
 
 
+# Rôle : historique paginé (50 par page) ; filtres type, raison, date, recherche, produit, emplacement ; export.
+# Liens : route /stock/movements/ ; lit StockMovement ; export via export_list_response (apps/core/exports.py) ;
+# rend apps/stock/templates/stock/movements.html ; atteinte depuis les graphiques du tableau de bord du stock.
 @login_required
 def movements_view(request):
     """List all stock movements with filters"""

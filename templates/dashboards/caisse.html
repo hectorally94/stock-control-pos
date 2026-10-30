@@ -103,6 +103,8 @@
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick, autoSkip: true, maxTicksLimit: 8 } }
             },
+            // Rôle : au clic sur le graphique des ventes par heure, ouvre le tableau de bord des ventes.
+            // Liens : appelé par Chart.js ; caisse_dashboard (apps/core/dashboard_views.py) donne l'URL pos:dashboard.
             onClick: () => { window.location = mySalesBase; }
         }
     });

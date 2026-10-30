@@ -38,6 +38,7 @@ class Enterprise(models.Model):
             models.Index(fields=['is_active'], name='idx_enterprise_active'),
         ]
 
+    # Rôle : affiche l'entreprise par son nom.
     def __str__(self):
         return self.name
 

@@ -51,8 +51,12 @@ class DailySummaryAdmin(admin.ModelAdmin):
     date_hierarchy = 'summary_date'
     ordering = ('-summary_date',)
     
+    # Rôle : interdit l'ajout manuel d'un résumé journalier depuis l'admin.
+    # Liens : appelée par l'admin Django ; les résumés viennent notamment de la commande generate_daily_summary.
     def has_add_permission(self, request):
         return False
     
+    # Rôle : rend les résumés journaliers non modifiables dans l'admin.
+    # Liens : appelée par l'admin Django, pour le modèle DailySummary de apps/accounting/models.py.
     def has_change_permission(self, request, obj=None):
         return False

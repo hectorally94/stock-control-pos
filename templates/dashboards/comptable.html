@@ -140,6 +140,9 @@
                 y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick, callback: v => v.toLocaleString('fr-FR') } },
                 x: { grid: { display: false }, ticks: { color: tick } }
             },
+            // Rôle : au clic sur une barre, ouvre les ventes ou les dépenses du mois, selon la série cliquée.
+            // Liens : appelé par Chart.js ; dates de comptable_dashboard (apps/core/dashboard_views.py).
+            // Cibles pos:sales_list ou accounting:expense_list, qui lisent ?start= et ?end=.
             onClick: (e, els) => {
                 if (!els.length) return;
                 const { datasetIndex, index } = els[0];

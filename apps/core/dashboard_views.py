@@ -45,6 +45,8 @@ MONTHS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin',
              'juil', 'aoû', 'sep', 'oct', 'nov', 'déc']
 
 
+# Rôle : donne l'URL d'accueil du rôle (DASHBOARD_ROLES) ; rôles stock : stock:dashboard ; sinon pos:dashboard.
+# Liens : appelée par home_dashboard et _guard de ce fichier.
 def dashboard_url_for(user):
     """Return the URL of the dashboard that is *home* for this user's role."""
     role = getattr(user, 'role', None)
@@ -57,6 +59,8 @@ def dashboard_url_for(user):
     return reverse('pos:dashboard')
 
 
+# Rôle : renvoie une redirection vers le bon tableau de bord si le rôle n'y a pas droit, sinon None.
+# Liens : appelée au début de patron_dashboard, gerant_dashboard, caisse_dashboard et comptable_dashboard.
 def _guard(request, dashboard_name):
     """If the user's role may not see `dashboard_name`, redirect them home.
 
@@ -70,10 +74,14 @@ def _guard(request, dashboard_name):
 
 # --- shared helpers -----------------------------------------------------------
 
+# Rôle : renvoie le premier jour du mois de la date donnée.
+# Liens : usage local : patron_dashboard, gerant_dashboard et comptable_dashboard.
 def _month_start(d):
     return d.replace(day=1)
 
 
+# Rôle : liste (année, mois, libellé français) des n derniers mois, du plus ancien au plus récent.
+# Liens : usage local : _sales_month_series, _month_periods et comptable_dashboard.
 def _last_months(today, n):
     """List of (year, month, label) for the last `n` months, oldest first."""
     out = []
@@ -87,6 +95,8 @@ def _last_months(today, n):
     return list(reversed(out))
 
 
+# Rôle : calcule les libellés et le total de total_amount par mois pour un queryset de Sale.
+# Liens : appelée par patron_dashboard ; alimente le graphique de templates/dashboards/patron.html.
 def _sales_month_series(sales_qs, today, n=6):
     """Monthly sales totals (in FB) for the last n months, oldest first."""
     labels, data = [], []
@@ -99,6 +109,8 @@ def _sales_month_series(sales_qs, today, n=6):
     return labels, data
 
 
+# Rôle : donne les dates de début et de fin de chaque mois pour ouvrir la liste filtrée au clic.
+# Liens : appelée par patron_dashboard et comptable_dashboard ; lue par le onClick de leurs templates.
 def _month_periods(today, n=6):
     """(start_iso, end_iso) for the last n months, oldest first — for drill-downs."""
     out = []
@@ -108,6 +120,8 @@ def _month_periods(today, n=6):
     return out
 
 
+# Rôle : additionne purchase_price × quantity d'un queryset SaleItem (coût des marchandises vendues).
+# Liens : appelée par patron_dashboard et comptable_dashboard pour le bénéfice ; lit apps/pos/models.py.
 def _cogs(items_qs):
     """Cost of goods sold for a SaleItem queryset."""
     total = Decimal('0')
@@ -120,6 +134,8 @@ def _cogs(items_qs):
 # Home dispatcher
 # ============================================================================
 
+# Rôle : page « / » : redirige vers le tableau de bord du rôle, ou affiche home.html sans entreprise.
+# Liens : route « home » de stock_control/urls.py ; appelle dashboard_url_for ; rend templates/home.html.
 @login_required
 def home_dashboard(request):
     """Send each user to the dashboard that fits their role."""
@@ -136,6 +152,9 @@ def home_dashboard(request):
 # Patron — enterprise-wide executive view
 # ============================================================================
 
+# Rôle : vue dirigeant de l'entreprise : CA et bénéfice du mois, valeur du stock, crédits, alertes, classements.
+# Liens : route dashboards:patron (apps/core/urls.py) ; rend templates/dashboards/patron.html.
+# Lit Sale, SaleItem, Stock et CustomerCredit ; protégée par _guard (admin, owner).
 @login_required
 def patron_dashboard(request):
     bounce = _guard(request, 'dashboards:patron')
@@ -234,6 +253,9 @@ def patron_dashboard(request):
 # Gérant — operations (location-scoped for boutique managers)
 # ============================================================================
 
+# Rôle : vue opérations : ventes, transferts, stock faible, dépenses ; un boutique_manager voit son emplacement.
+# Liens : route dashboards:gerant (apps/core/urls.py) ; rend templates/dashboards/gerant.html.
+# Lit Sale, Transfer, Stock et Expense ; protégée par _guard (manager, boutique_manager).
 @login_required
 def gerant_dashboard(request):
     bounce = _guard(request, 'dashboards:gerant')
@@ -321,6 +343,9 @@ def gerant_dashboard(request):
 # Caisse — cashier's personal day
 # ============================================================================
 
+# Rôle : journée du caissier connecté : ses ventes, panier moyen, crédits, session de caisse, ventes par heure.
+# Liens : route dashboards:caisse (apps/core/urls.py) ; rend templates/dashboards/caisse.html.
+# Lit Sale et CashRegisterSession ; protégée par _guard (cashier).
 @login_required
 def caisse_dashboard(request):
     bounce = _guard(request, 'dashboards:caisse')
@@ -386,6 +411,9 @@ def caisse_dashboard(request):
 # Comptabilité — finance (read-only, enterprise-wide)
 # ============================================================================
 
+# Rôle : vue finance : CA, dépenses, marge, crédits, comparaison sur 6 mois, sessions de caisse fermées.
+# Liens : route dashboards:comptable (apps/core/urls.py) ; rend templates/dashboards/comptable.html.
+# Lit Sale, SaleItem, Expense, CustomerCredit, CashRegisterSession ; protégée par _guard (accountant).
 @login_required
 def comptable_dashboard(request):
     bounce = _guard(request, 'dashboards:comptable')

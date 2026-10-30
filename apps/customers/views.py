@@ -14,9 +14,15 @@ from .models import Customer, CustomerCredit, CreditPayment
 from apps.pos.models import Sale
 
 
+# Rôle : fabrique un décorateur de vue qui limite l'accès aux rôles donnés.
+# Liens : appliqué aux vues d'ici ; même logique dans apps/accounting/views.py et apps/products/views.py.
 def role_required(*roles):
     """Decorator to check if user has required role"""
+    # Rôle : reçoit la vue à protéger et renvoie wrapper, en gardant ses métadonnées grâce à @wraps.
+    # Liens : utilisé uniquement par role_required, dans ce fichier.
     def decorator(view_func):
+        # Rôle : renvoie l'anonyme vers login et le mauvais rôle vers home avec un message, sinon exécute la vue.
+        # Liens : routes login et home de stock_control/urls.py ; lit User.role (apps/accounts/models.py).
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
@@ -33,6 +39,9 @@ def role_required(*roles):
 # CUSTOMER VIEWS
 # =============================================================================
 
+# Rôle : liste les clients avec filtres (statut, dette), recherche, statistiques de crédit et export PDF/Excel.
+# Liens : route /customers/, menu de templates/base.html ; appelle export_list_response (apps/core/exports.py).
+# Rend customer_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier', 'accountant')
 def customer_list(request):
@@ -112,6 +121,8 @@ def customer_list(request):
     return render(request, 'customers/customer_list.html', context)
 
 
+# Rôle : crée un client ; refuse un téléphone ou un email déjà pris dans l'entreprise, ou une limite négative.
+# Liens : route /customers/create/, lien depuis customer_list.html ; écrit Customer ; rend customer_form.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier')
 def customer_create(request):
@@ -170,6 +181,9 @@ def customer_create(request):
     return render(request, 'customers/customer_form.html', {'mode': 'create'})
 
 
+# Rôle : affiche un client avec ses crédits, ses 10 dernières ventes et ses 20 derniers paiements.
+# Liens : route /customers/<pk>/ ; lit CustomerCredit, CreditPayment et Sale (apps/pos/models.py).
+# Rend customer_detail.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier', 'accountant')
 def customer_detail(request, pk):
@@ -206,6 +220,8 @@ def customer_detail(request, pk):
     return render(request, 'customers/customer_detail.html', context)
 
 
+# Rôle : modifie un client avec les mêmes contrôles que la création, en excluant le client lui-même.
+# Liens : route /customers/<pk>/edit/ ; Customer.save() déclenche le contrôle de apps/customers/signals.py.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager')
 def customer_edit(request, pk):
@@ -271,6 +287,8 @@ def customer_edit(request, pk):
     return render(request, 'customers/customer_form.html', context)
 
 
+# Rôle : inverse is_active du client sur POST (suppression logique), sans effacer la ligne.
+# Liens : route /customers/<pk>/toggle/, formulaire de customer_detail.html ; redirige vers customer_list.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def customer_toggle(request, pk):
@@ -299,6 +317,9 @@ def customer_toggle(request, pk):
 # CREDIT & PAYMENT VIEWS
 # =============================================================================
 
+# Rôle : liste les crédits de l'entreprise avec filtres (statut, retard, nom), totaux et export PDF/Excel.
+# Liens : route /customers/credits/, menu de templates/base.html, apps/core/dashboard_views.py.
+# Appelle export_list_response (apps/core/exports.py) ; rend credit_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier', 'accountant')
 def credit_list(request):
@@ -385,6 +406,9 @@ def credit_list(request):
     return render(request, 'customers/credit_list.html', context)
 
 
+# Rôle : valide un paiement (positif, au plus le reste dû) et crée le CreditPayment ; refuse un crédit soldé.
+# Liens : route /customers/credits/<credit_id>/pay/ ; CreditPayment.save() met à jour crédit et solde client.
+# Liens depuis credit_list.html et customer_detail.html ; rend record_payment.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier')
 def record_payment(request, credit_id):
@@ -445,6 +469,8 @@ def record_payment(request, credit_id):
     return render(request, 'customers/record_payment.html', context)
 
 
+# Rôle : liste paginée des paiements de crédit d'un client, avec le total déjà versé.
+# Liens : route /customers/<customer_id>/payments/, lien dans customer_detail.html ; rend payment_history.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'boutique_manager', 'cashier', 'accountant')
 def payment_history(request, customer_id):

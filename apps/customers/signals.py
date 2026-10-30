@@ -10,6 +10,9 @@ from apps.pos.models import Sale
 from apps.settings.models import StoreSetting
 
 
+# Rôle : à la création d'une vente terminée, met à jour les totaux et points ; à crédit, crée le CustomerCredit.
+# Liens : signal post_save de Sale (apps/pos/models.py) ; lit StoreSetting ; écrit Customer et CustomerCredit.
+# Vente passée de completed à cancelled ou refunded : inverse ces effets et solde le crédit restant.
 @receiver(post_save, sender=Sale)
 def update_customer_on_sale(sender, instance, created, **kwargs):
     """
@@ -115,6 +118,8 @@ def update_customer_on_sale(sender, instance, created, **kwargs):
                 customer.save()
 
 
+# Rôle : garde dans instance._original_status le statut en base, avant l'enregistrement de la vente.
+# Liens : signal pre_save de Sale ; lu par update_customer_on_sale ; équivalent dans apps/pos/signals.py.
 @receiver(pre_save, sender=Sale)
 def store_original_sale_status_for_customer(sender, instance, **kwargs):
     """
@@ -130,6 +135,8 @@ def store_original_sale_status_for_customer(sender, instance, **kwargs):
         instance._original_status = None
 
 
+# Rôle : lève ValidationError si un client existant a une limite de crédit inférieure à son solde.
+# Liens : signal pre_save de Customer, déclenché par customer_edit, CreditPayment.save, update_customer_on_sale.
 @receiver(pre_save, sender=Customer)
 def validate_customer_credit_limit(sender, instance, **kwargs):
     """

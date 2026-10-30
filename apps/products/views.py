@@ -13,9 +13,15 @@ from apps.stock.models import Stock
 from apps.locations.models import Location, LocationStock
 
 
+# Rôle : fabrique un décorateur de vue qui limite l'accès aux rôles donnés.
+# Liens : appliqué aux vues d'ici ; même logique dans apps/accounting/views.py et apps/customers/views.py.
 def role_required(*roles):
     """Decorator to check if user has required role"""
+    # Rôle : reçoit la vue à protéger et renvoie wrapper ; contrairement aux autres copies, sans @wraps.
+    # Liens : utilisé uniquement par role_required, dans ce fichier.
     def decorator(view_func):
+        # Rôle : renvoie l'anonyme vers login et le mauvais rôle vers home avec un message, sinon exécute la vue.
+        # Liens : routes login et home de stock_control/urls.py ; lit User.role (apps/accounts/models.py).
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('login')
@@ -31,6 +37,8 @@ def role_required(*roles):
 # CATEGORY VIEWS
 # =============================================================================
 
+# Rôle : liste les catégories de l'entreprise et les globales, avec le nombre de produits actifs et des filtres.
+# Liens : route /products/categories/, lien depuis product_list.html ; rend category_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'warehouse_manager', 'boutique_manager')
 def category_list(request):
@@ -75,6 +83,8 @@ def category_list(request):
     return render(request, 'products/category_list.html', context)
 
 
+# Rôle : crée une catégorie après contrôle du nom (requis, unique dans l'entreprise, casse ignorée).
+# Liens : route /products/categories/create/, liens dans category_list.html et product_form.html.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def category_create(request):
@@ -111,6 +121,8 @@ def category_create(request):
     return render(request, 'products/category_form.html', {'mode': 'create'})
 
 
+# Rôle : modifie une catégorie accessible à l'entreprise de l'utilisateur, avec les mêmes contrôles de nom.
+# Liens : route /products/categories/<pk>/edit/, lien depuis category_list.html ; rend category_form.html.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def category_edit(request, pk):
@@ -157,6 +169,8 @@ def category_edit(request, pk):
     return render(request, 'products/category_form.html', context)
 
 
+# Rôle : supprime définitivement la catégorie sur POST, sauf si des produits, même inactifs, l'utilisent.
+# Liens : route /products/categories/<pk>/delete/, formulaire de category_list.html ; supprime la Category.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def category_delete(request, pk):
@@ -185,6 +199,8 @@ def category_delete(request, pk):
     return redirect('products:category_list')
 
 
+# Rôle : inverse is_active de la catégorie sur POST, puis revient à la liste.
+# Liens : route /products/categories/<pk>/toggle/, formulaire de category_list.html ; écrit Category.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def category_toggle(request, pk):
@@ -213,6 +229,9 @@ def category_toggle(request, pk):
 # PRODUCT VIEWS
 # =============================================================================
 
+# Rôle : liste les produits et leurs emplacements en stock, avec filtres, pagination et export PDF/Excel.
+# Liens : route /products/, menu de templates/base.html ; lit Stock (apps/stock/models.py) et LocationStock.
+# Appelle export_list_response (apps/core/exports.py) ; rend product_list.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'warehouse_manager', 'boutique_manager', 'stock_manager')
 def product_list(request):
@@ -349,6 +368,9 @@ def product_list(request):
     return render(request, 'products/product_list.html', context)
 
 
+# Rôle : valide le formulaire, crée le produit et une ligne Stock initiale à quantité 0.
+# Liens : route /products/create/, liens dans product_list.html et apps/stock/templates/stock/entry.html.
+# Écrit Product (apps/products/models.py) et Stock (apps/stock/models.py).
 @login_required
 @role_required('admin', 'owner', 'manager')
 def product_create(request):
@@ -447,6 +469,8 @@ def product_create(request):
     return render(request, 'products/product_form.html', context)
 
 
+# Rôle : affiche un produit avec son stock par emplacement et le total, sommé depuis les lignes Stock.
+# Liens : route /products/<pk>/, liée depuis les listes et tableaux de bord ; rend product_detail.html.
 @login_required
 @role_required('admin', 'owner', 'manager', 'warehouse_manager', 'boutique_manager', 'stock_manager')
 def product_detail(request, pk):
@@ -478,6 +502,8 @@ def product_detail(request, pk):
     return render(request, 'products/product_detail.html', context)
 
 
+# Rôle : modifie un produit de l'entreprise avec les mêmes contrôles que la création, sans toucher au stock.
+# Liens : route /products/<pk>/edit/, liens dans product_list.html et product_detail.html ; rend le formulaire.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def product_edit(request, pk):
@@ -569,6 +595,8 @@ def product_edit(request, pk):
     return render(request, 'products/product_form.html', context)
 
 
+# Rôle : inverse is_active du produit sur POST, puis revient à la liste.
+# Liens : route /products/<pk>/toggle/, formulaires de product_list.html et product_detail.html ; écrit Product.
 @login_required
 @role_required('admin', 'owner', 'manager')
 def product_toggle(request, pk):
@@ -593,6 +621,9 @@ def product_toggle(request, pk):
     return redirect('products:product_list')
 
 
+# Rôle : sur POST, désactive le produit s'il a des ventes ou mouvements, sinon le supprime définitivement.
+# Liens : route /products/<pk>/delete/, appelée dans tests/test_forms_e2e.py ; aucun template ne la référence.
+# Lit SaleItem (apps/pos/models.py) et StockMovement (apps/stock/models.py).
 @login_required
 @role_required('admin', 'owner', 'manager')
 def product_delete(request, pk):

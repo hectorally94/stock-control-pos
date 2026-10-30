@@ -22,6 +22,8 @@ class StoreSettingViewSet(viewsets.ModelViewSet):
     ordering_fields = ['key', 'updated_at']
     ordering = ['key']
     
+    # Rôle : renvoie la valeur du paramètre ?key=, avec 400 si key manque et 404 si la valeur est absente.
+    # Liens : route GET /api/v1/settings/get_setting/ ; StoreSetting.get_setting() (apps/settings/models.py).
     @action(detail=False, methods=['get'])
     def get_setting(self, request):
         """
@@ -44,6 +46,8 @@ class StoreSettingViewSet(viewsets.ModelViewSet):
             status=status.HTTP_404_NOT_FOUND
         )
     
+    # Rôle : crée ou modifie un paramètre sans passer par la validation du serializer ; seule key est exigée.
+    # Liens : route POST /api/v1/settings/set_setting/ ; StoreSetting.set_setting() (apps/settings/models.py).
     @action(detail=False, methods=['post'])
     def set_setting(self, request):
         """
@@ -63,6 +67,8 @@ class StoreSettingViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(setting)
         return Response(serializer.data)
     
+    # Rôle : renvoie tous les paramètres sous forme d'un seul dictionnaire clé et valeur.
+    # Liens : route GET /api/v1/settings/all_settings/ ; lit StoreSetting (apps/settings/models.py).
     @action(detail=False, methods=['get'])
     def all_settings(self, request):
         """

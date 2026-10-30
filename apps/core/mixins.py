@@ -6,6 +6,8 @@ class EnterpriseQuerySetMixin:
     Mixin to filter querysets by enterprise based on the current user.
     """
 
+    # Rôle : limite un queryset à l'entreprise de l'utilisateur ; tout pour un superuser, rien pour les autres cas.
+    # Liens : appelée par EnterpriseViewSetMixin.get_queryset et LocationViewSetMixin.get_queryset de ce fichier.
     def get_enterprise_queryset(self, queryset: QuerySet) -> QuerySet:
         """
         Filter queryset by user's enterprise.
@@ -30,6 +32,8 @@ class LocationQuerySetMixin:
     Mixin to filter querysets by location based on the current user.
     """
 
+    # Rôle : limite un queryset à l'emplacement de l'utilisateur ; superuser et owner voient toute l'entreprise.
+    # Liens : appelée par LocationViewSetMixin.get_queryset, mixin qu'aucune vue n'utilise aujourd'hui.
     def get_location_queryset(self, queryset: QuerySet) -> QuerySet:
         """
         Filter queryset by user's assigned location(s).
@@ -57,10 +61,15 @@ class EnterpriseViewSetMixin(EnterpriseQuerySetMixin):
     and sets enterprise on object creation.
     """
 
+    # Rôle : ajoute automatiquement le filtre par entreprise au queryset du ViewSet.
+    # Liens : appelée par DRF ; TransferViewSet (api/v1/views/transfers.py), LocationViewSet et LocationStockViewSet
+    # (api/v1/views/locations.py) l'héritent ; les vues qui la surchargent l'appellent via super().
     def get_queryset(self):
         queryset = super().get_queryset()
         return self.get_enterprise_queryset(queryset)
 
+    # Rôle : enregistre le nouvel objet avec l'entreprise de l'utilisateur, si celui-ci en a une.
+    # Liens : appelée par DRF pour TransferViewSet et LocationStockViewSet ; LocationViewSet a sa propre version.
     def perform_create(self, serializer):
         """
         Automatically set enterprise when creating objects.
@@ -77,6 +86,8 @@ class LocationViewSetMixin(LocationQuerySetMixin, EnterpriseQuerySetMixin):
     Mixin for ViewSets that filters by both enterprise and location.
     """
 
+    # Rôle : filtre le queryset par entreprise, puis par emplacement.
+    # Liens : appelle get_enterprise_queryset et get_location_queryset ; aucune vue n'hérite de ce mixin.
     def get_queryset(self):
         queryset = super().get_queryset()
         # First filter by enterprise
@@ -84,6 +95,8 @@ class LocationViewSetMixin(LocationQuerySetMixin, EnterpriseQuerySetMixin):
         # Then filter by location if applicable
         return self.get_location_queryset(queryset)
 
+    # Rôle : enregistre le nouvel objet avec l'entreprise et l'emplacement de l'utilisateur, s'ils existent.
+    # Liens : prévue pour DRF ; aucune vue n'hérite de ce mixin aujourd'hui.
     def perform_create(self, serializer):
         """
         Automatically set enterprise and location when creating objects.
@@ -105,6 +118,8 @@ class AuditCreateMixin:
     Mixin to automatically set created_by on object creation.
     """
 
+    # Rôle : enregistre le nouvel objet en renseignant created_by avec l'utilisateur connecté.
+    # Liens : prévue pour DRF ; hérité seulement par AuditMixin de ce fichier, aucune vue ne l'utilise aujourd'hui.
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
@@ -114,6 +129,8 @@ class AuditUpdateMixin:
     Mixin to automatically set updated_by on object update.
     """
 
+    # Rôle : enregistre la modification en renseignant updated_by avec l'utilisateur connecté.
+    # Liens : prévue pour DRF ; hérité seulement par AuditMixin de ce fichier, aucune vue ne l'utilise aujourd'hui.
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
 

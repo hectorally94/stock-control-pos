@@ -417,6 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const trendDates = {{ trend_dates|safe }};
     const paymentCodes = {{ payment_codes|safe }};
 
+    // Rôle : affiche le curseur main quand la souris survole un élément cliquable d'un graphique.
+    // Liens : passée à l'option onHover des graphiques Chart.js de cette page.
     function pointerOnHover(event, elements) {
         event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
     }
@@ -463,6 +465,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 mode: 'index'
             },
             onHover: pointerOnHover,
+            // Rôle : au clic sur un élément du graphique, ouvre l'historique des ventes filtré (jour ou paiement).
+            // Liens : appelée par Chart.js ; SALES_URL mène à sales_list (apps/pos/views_frontend.py).
             onClick: function(event, elements) {
                 if (!elements.length) return;
                 window.location.href = SALES_URL + '?date=' + trendDates[elements[0].index];
@@ -494,6 +498,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: gridColor
                     },
                     ticks: {
+                        // Rôle : formate les graduations de l'axe Y selon la langue du navigateur (avec FB pour la tendance).
+                        // Liens : appelée par Chart.js (ticks.callback) ; données fournies par sales_dashboard.
                         callback: function(value) {
                             return value.toLocaleString() + ' FB';
                         }
@@ -547,6 +553,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: pointerOnHover,
+                // Rôle : au clic sur un élément du graphique, ouvre l'historique des ventes filtré (jour ou paiement).
+                // Liens : appelée par Chart.js ; SALES_URL mène à sales_list (apps/pos/views_frontend.py).
                 onClick: function(event, elements) {
                     if (!elements.length) return;
                     window.location.href = SALES_URL + '?date=today&payment=' + encodeURIComponent(paymentCodes[elements[0].index]);
@@ -570,6 +578,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
+                            // Rôle : rédige l'infobulle du graphique en FB, avec le pourcentage pour les modes de paiement.
+                            // Liens : appelée par Chart.js (tooltip.callbacks) ; données fournies par sales_dashboard.
                             label: function(context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((context.parsed / total) * 100).toFixed(1);
@@ -604,6 +614,8 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             onHover: pointerOnHover,
+            // Rôle : au clic sur un élément du graphique, ouvre l'historique des ventes filtré (jour ou paiement).
+            // Liens : appelée par Chart.js ; SALES_URL mène à sales_list (apps/pos/views_frontend.py).
             onClick: function(event, elements) {
                 if (!elements.length) return;
                 window.location.href = SALES_URL + '?date=today';
@@ -620,6 +632,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
+                        // Rôle : rédige l'infobulle du graphique en FB, avec le pourcentage pour les modes de paiement.
+                        // Liens : appelée par Chart.js (tooltip.callbacks) ; données fournies par sales_dashboard.
                         label: function(context) {
                             return context.parsed.y.toLocaleString() + ' FB';
                         }
@@ -633,6 +647,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: gridColor
                     },
                     ticks: {
+                        // Rôle : formate les graduations de l'axe Y selon la langue du navigateur (avec FB pour la tendance).
+                        // Liens : appelée par Chart.js (ticks.callback) ; données fournies par sales_dashboard.
                         callback: function(value) {
                             return value.toLocaleString();
                         }

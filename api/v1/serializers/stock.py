@@ -38,6 +38,8 @@ class StockMovementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user', 'created_at']
     
+    # Rôle : refuse une quantité nulle ou négative ; le sens vient de movement_type, pas du signe.
+    # Liens : appelée par DRF pour StockMovementViewSet ; StockMovement.save() (apps/stock/models.py) l'applique.
     def validate_quantity(self, value):
         """Ensure quantity is positive"""
         if value <= 0:

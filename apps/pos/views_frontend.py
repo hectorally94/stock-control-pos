@@ -33,6 +33,9 @@ SALE_STATUS_LABELS = {
 }
 
 
+# Rôle : historique filtrable des ventes (completed par défaut), paginé par 50, exportable en PDF ou Excel.
+# Liens : route /pos/sales/ ; template apps/pos/templates/pos/sales_list.html ; export_list_response
+# (apps/core/exports.py) ; liens depuis les dashboards pos, reports et apps/core/dashboard_views.py.
 @login_required
 def sales_list(request):
     """Sales history with filters — drill-down target for the dashboards."""
@@ -178,6 +181,9 @@ def sales_list(request):
     return render(request, 'pos/sales_list.html', context)
 
 
+# Rôle : calcule les stats jour/semaine/mois, le suivi des crédits et les données JSON des graphiques.
+# Liens : route /pos/dashboard/ ; template apps/pos/templates/pos/dashboard.html ; lit Sale, SaleItem,
+# CustomerCredit et CreditPayment ; limitée à l'emplacement pour cashier et boutique_manager.
 @login_required
 def sales_dashboard(request):
     """
@@ -350,6 +356,9 @@ def sales_dashboard(request):
     return render(request, 'pos/dashboard.html', context)
 
 
+# Rôle : ouvre la caisse (cashier et boutique_manager seulement) : catégories, clients, produits populaires.
+# Liens : route /pos/ ; template apps/pos/templates/pos/cashier.html (posApp) ;
+# le stock affiché vient de Product.stock_info (modèle Stock de apps/stock/models.py).
 @login_required
 def cashier_view(request):
     """
@@ -408,6 +417,9 @@ def cashier_view(request):
     return render(request, 'pos/cashier.html', context)
 
 
+# Rôle : renvoie en HTML la grille des produits trouvés (24 max) ou des produits populaires (popular=1).
+# Liens : route /pos/search/, appelée par fetch dans searchProducts et refreshProducts (cashier.html) ;
+# rend apps/pos/templates/pos/partials/product_grid.html.
 @login_required
 def search_products(request):
     """
@@ -477,6 +489,9 @@ def search_products(request):
     return render(request, 'pos/partials/product_grid.html', {'products': products_with_stock})
 
 
+# Rôle : enregistre une vente « completed » et ses lignes depuis le JSON du panier, puis répond en JSON.
+# Liens : route POST /pos/create-sale/, appelée par completeSale (cashier.html) ; déclenche les signaux
+# de apps/pos/signals.py (stock, journal) et apps/customers/signals.py (client, crédit).
 @login_required
 def create_sale_view(request):
     """
@@ -539,6 +554,9 @@ def create_sale_view(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
+# Rôle : renvoie le reçu PDF d'une vente en téléchargement et journalise sa génération.
+# Liens : route /pos/sales/<id>/receipt/ (completeSale, sales_list.html, dashboards) ;
+# appelle generate_receipt_pdf (apps/pos/utils/receipt_generator.py) ; écrit dans ActionLog.
 @login_required
 def sale_receipt_pdf(request, sale_id):
     """
@@ -571,6 +589,9 @@ def sale_receipt_pdf(request, sale_id):
     return response
 
 
+# Rôle : crée un client depuis la caisse (nom obligatoire) et renvoie son id et son nom en JSON.
+# Liens : route POST /pos/create-customer/, appelée par createCustomer (cashier.html) ;
+# crée un Customer (apps/customers/models.py), validé par le pre_save de apps/customers/signals.py.
 @login_required
 def create_customer_view(request):
     """

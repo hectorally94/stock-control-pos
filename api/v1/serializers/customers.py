@@ -37,6 +37,8 @@ class CustomerCreditSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    # Rôle : refuse un montant restant négatif sur un crédit client.
+    # Liens : appelée par DRF pour les écritures de CustomerCreditViewSet (api/v1/views/customers.py).
     def validate_remaining_amount(self, value):
         """Ensure remaining amount is not negative"""
         if value < 0:
@@ -62,6 +64,8 @@ class CustomerSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'current_balance', 'total_purchases', 'purchase_count', 'loyalty_points', 'created_at', 'updated_at']
     
+    # Rôle : calcule current_balance / credit_limit en pourcentage, via des float, ou 0 si la limite est nulle.
+    # Liens : appelée par DRF pour les réponses détaillées de CustomerViewSet (api/v1/views/customers.py).
     def get_credit_utilization(self, obj):
         """Calculate credit utilization percentage.
 
@@ -74,6 +78,8 @@ class CustomerSerializer(serializers.ModelSerializer):
             return round(float(obj.current_balance or 0) / credit_limit * 100, 2)
         return 0
     
+    # Rôle : refuse une limite de crédit inférieure au solde actuel (solde 0 pour un nouveau client).
+    # Liens : appelée par DRF pour CustomerViewSet ; apps/customers/signals.py refait ce contrôle avant save.
     def validate(self, data):
         """Validate credit limit"""
         credit_limit = data.get('credit_limit', self.instance.credit_limit if self.instance else 0)
