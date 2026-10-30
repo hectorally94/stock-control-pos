@@ -52,7 +52,14 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-Dans le fichier, mettez `DB_PASSWORD=stockcontrol123`, puis enregistrez.
+Le Bloc-notes s'ouvre. Modifiez ces deux lignes pour qu'elles soient exactement comme ceci :
+
+```
+DB_PASSWORD=stockcontrol123
+DB_HOST=127.0.0.1
+```
+
+Enregistrez avec `Ctrl+S`, puis fermez le Bloc-notes.
 
 ### 5. Démarrer la base de données
 
@@ -60,7 +67,13 @@ Dans le fichier, mettez `DB_PASSWORD=stockcontrol123`, puis enregistrez.
 docker compose up -d mysql
 ```
 
-Attendez environ 30 secondes que MySQL démarre.
+Attendez environ 1 minute que MySQL démarre, puis vérifiez :
+
+```powershell
+docker ps
+```
+
+La ligne `stock_control_mysql` doit afficher `(healthy)`. Si elle affiche `(health: starting)`, attendez encore et relancez la commande.
 
 ### 6. Remplir la base de données
 
@@ -68,17 +81,73 @@ Choisissez **une seule** des deux options.
 
 #### Option A : importer la vraie base de données
 
-Le fichier `.sql` n'est pas sur GitHub, car il contient des données réelles. Demandez-le au responsable du projet, puis placez-le dans un dossier `database\` à la racine du projet.
+Le fichier de la base de données n'est pas sur GitHub, car il contient des données réelles. Le responsable du projet vous l'envoie en privé. Il s'appelle `stock_control_20261030.sql`.
 
-**Attention :** l'import remplace le contenu de votre base locale.
+**Attention :** l'import remplace tout le contenu de votre base locale. Ce n'est pas un problème lors de la première installation.
+
+**Étape 1 : vérifier que PowerShell est dans le bon dossier**
+
+```powershell
+dir manage.py
+```
+
+Le fichier `manage.py` doit s'afficher. Si vous voyez une erreur, ouvrez le bon dossier : dans l'Explorateur Windows, entrez dans le dossier du projet (celui qui contient `manage.py`), faites un clic droit dans une zone vide, puis choisissez **« Ouvrir dans le terminal »**. Après un téléchargement ZIP, ce dossier peut se trouver à l'intérieur d'un autre dossier du même nom.
+
+Si PowerShell vient d'être rouvert, réactivez l'environnement Python :
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+**Étape 2 : créer le dossier `database`**
+
+```powershell
+mkdir database
+```
+
+**Étape 3 : placer le fichier dans ce dossier**
+
+Dans l'Explorateur Windows, copiez le fichier `stock_control_20261030.sql` (souvent dans **Téléchargements**) et collez-le dans le dossier `database` du projet. Vérifiez ensuite :
+
+```powershell
+dir database
+```
+
+Vous devez voir `stock_control_20261030.sql`. Si le nom est différent (par exemple avec `(1)` à la fin), renommez le fichier.
+
+**Étape 4 : copier le fichier dans le conteneur Docker**
 
 ```powershell
 docker cp database\stock_control_20261030.sql stock_control_mysql:/tmp/backup.sql
+```
+
+**Étape 5 : importer le fichier dans MySQL**
+
+Copiez cette commande en entier, sur une seule ligne :
+
+```powershell
 docker exec stock_control_mysql sh -c "mysql -uroot -pstockcontrol123 --default-character-set=utf8mb4 stock_control_pos < /tmp/backup.sql"
+```
+
+Cela prend quelques secondes. Le message `Using a password on the command line interface can be insecure` est normal : ce n'est pas une erreur.
+
+**Étape 6 : vérifier l'import**
+
+```powershell
+docker exec stock_control_mysql mysql -uroot -pstockcontrol123 -e "SELECT COUNT(*) AS produits FROM stock_control_pos.products;"
+```
+
+Le résultat doit afficher **340**.
+
+**Étape 7 : terminer la préparation**
+
+```powershell
 python manage.py migrate
 ```
 
-Les comptes utilisateurs viennent de la base importée : demandez les identifiants au responsable du projet.
+Le message `No migrations to apply` est normal. N'exécutez ni `seed_data` ni `createsuperuser` : les données et les comptes viennent déjà du fichier importé. Demandez les identifiants au responsable du projet.
+
+Passez ensuite à la section **« 7. Lancer l'application »** ci-dessous.
 
 #### Option B : commencer avec une base vide
 
@@ -128,6 +197,9 @@ pytest --ignore=tests/test_import_catalog.py
 | `py -3.13` introuvable | Fermez et rouvrez PowerShell, ou réinstallez Python avec l'option PATH cochée |
 | `mysqlclient` ne s'installe pas | Vérifiez avec `python --version` que vous utilisez Python 3.12 ou 3.13 |
 | `Can't connect to MySQL` (erreur 2003) | Docker n'est pas lancé ou MySQL démarre encore : `docker start stock_control_mysql`, attendez 30 secondes |
+| `No such container: stock_control_mysql` | La base n'est pas démarrée : relancez `docker compose up -d mysql` |
+| `The system cannot find the path specified` avec `docker cp` | Le fichier n'est pas dans `database` ou son nom est différent : vérifiez avec `dir database` |
+| `Unknown database 'stock_control_pos'` | MySQL n'était pas encore prêt : attendez `(healthy)` dans `docker ps` et recommencez l'import |
 | Port 3306 déjà utilisé | MySQL est déjà installé sur la machine : arrêtez son service, ou changez le port dans `docker-compose.yml` et `.env` |
 
 ## Sécurité
